@@ -49,7 +49,6 @@ function responderBot(mensaje) {
     }
 
     if (botEstado.paso === "preguntar_nombre") {
-        // Corrección de identidad: Limpiamos frases comunes para quedarnos solo con el nombre
         let nombreLimpio = mensaje.replace(/hola|soy|me llamo|mi nombre es/gi, "").trim();
         botEstado.nombreCliente = nombreLimpio || mensaje;
         
@@ -59,12 +58,12 @@ function responderBot(mensaje) {
 
     // --- PASO 2: MENÚ PRINCIPAL ---
     if (botEstado.paso === "menu") {
-        if (texto === "1" || texto.includes("envío") || texto.includes("enviar")) {
+        if (texto === "1" || texto.includes("envío") || texto.includes("enviar") || texto.includes("lleven") || texto.includes("llevar")) {
             botEstado.tipo = "envio";
             botEstado.paso = "origen";
             return "Perfecto muchas gracias, ¿me dirías cuál es la dirección y localidad de origen?";
         }
-        if (texto === "2" || texto.includes("retiro") || texto.includes("retirar")) {
+        if (texto === "2" || texto.includes("retiro") || texto.includes("retirar") || texto.includes("busquen") || texto.includes("buscar")) {
             botEstado.tipo = "retiro";
             botEstado.paso = "retiro";
             return "Genial! muchas gracias por contar con nosotros, ¿me dirías cuál es la dirección y localidad de origen del retiro?";
@@ -76,14 +75,30 @@ function responderBot(mensaje) {
         return "Por favor, elige una opción:\n1- Envío\n2- Retiro\n3- Consulta";
     }
 
-    // --- PASO 3: CONSULTA ---
+    // --- PASO 3: CONSULTA (CON SALTO LÓGICO) ---
     if (botEstado.paso === "consulta_abierta") {
-        if (texto.includes("horario") || texto.includes("días")) {
-            return "Atendemos de lunes a viernes de 8 a 18hs. ¿Deseas consultar algo más?";
+        // Si en la consulta menciona ENVÍO o LLEVAR algo
+        if (texto.includes("envío") || texto.includes("enviar") || texto.includes("lleven") || texto.includes("llevar")) {
+            botEstado.tipo = "envio";
+            botEstado.paso = "origen";
+            return "Entendido, para coordinar el envío primero decime: ¿Cuál es la dirección y localidad de origen?";
         }
-        if (texto.includes("precio") || texto.includes("cuánto") || texto.includes("costo")) {
-            return "Los precios dependen de la distancia. Te sugiero iniciar un pedido (opción 1 o 2) para que Guillermo te cotice.";
+        // Si en la consulta menciona RETIRO o BUSCAR algo
+        if (texto.includes("retiro") || texto.includes("retirar") || texto.includes("busquen") || texto.includes("buscar")) {
+            botEstado.tipo = "retiro";
+            botEstado.paso = "retiro";
+            return "Claro que sí, para el retiro decime: ¿Cuál es la dirección y localidad de origen donde debemos buscar el paquete?";
         }
+        // Si consulta PRECIOS
+        if (texto.includes("precio") || texto.includes("cuánto") || texto.includes("costo") || texto.includes("sale")) {
+            return "Los precios se calculan según la distancia a recorrer. Por favor, aguarda que Guillermo ni bien esté disponible te cotiza tu pedido por WhatsApp. Si quieres adelantar los datos, escribe 'envío'.";
+        }
+        // Si consulta HORARIOS
+        if (texto.includes("horario") || texto.includes("días") || texto.includes("atienden")) {
+            return "Atendemos de lunes a viernes de 8 a 18hs. ¿Deseas realizar un pedido ahora?";
+        }
+
+        // Si no entiende la consulta específica
         return "Lo siento, no tengo información sobre esa consulta, 💔. Reformula tu pregunta o espera a que Guillermo te responda por WhatsApp. Soy un bot con memoria limitada y estoy a prueba, aprendiendo. ✍️";
     }
 
@@ -106,6 +121,7 @@ function responderBot(mensaje) {
                 botEstado.datos.detalles = mensaje;
                 const resumenEnvio = generarResumen(botEstado.datos, "envio");
                 botEstado.paso = "menu";
+                botEstado.tipo = null;
                 return resumenEnvio + `\n\nMuchas gracias por detallar todo, Guillermo en breve te cotizará tu pedido, que tengas una excelente jornada ❤️\n\nSi prefieres, puedes contactarlo aquí: ${linkWA}`;
         }
     }
@@ -134,11 +150,11 @@ function responderBot(mensaje) {
                 botEstado.datos.detalles = mensaje;
                 const resumenRetiro = generarResumen(botEstado.datos, "retiro");
                 botEstado.paso = "menu";
+                botEstado.tipo = null;
                 return resumenRetiro + `\n\nMuchas gracias por detallar todo, Guillermo en breve te cotizará tu pedido, que tengas una excelente jornada ❤️\n\nContacto directo: ${linkWA}`;
         }
     }
 
-    // RESPUESTA AMABLE POR DEFECTO
     return "Lo siento, no tengo información sobre esa consulta, 💔. Reformula tu pregunta o espera a que Guillermo te responda por WhatsApp. Soy un bot con memoria limitada y estoy a prueba, aprendiendo. ✍️";
 }
 
@@ -167,10 +183,7 @@ function addMessage(text, sender) {
     const chatBox = document.getElementById("chat-box");
     const msg = document.createElement("div");
     msg.className = "message " + sender;
-    
-    // Usamos innerHTML para que reconozca la etiqueta <small> y los saltos de línea
     msg.innerHTML = text.replace(/\n/g, '<br>');
-    
     chatBox.appendChild(msg);
     chatBox.scrollTop = chatBox.scrollHeight;
 }
@@ -187,3 +200,4 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
+
