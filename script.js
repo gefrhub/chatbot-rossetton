@@ -68,7 +68,6 @@ function mensajeFinalEnvio(datos) {
     return base + "Precio según distancia. Guillermo te cotiza cuando esté libre.";
   }
 
-  // amigable (default)
   return (
     base +
     "📌 Los precios se calculan según la distancia a recorrer por el cadete o comisionista.\n" +
@@ -111,7 +110,6 @@ function mensajeFinalRetiro(datos) {
     return base + "Precio según distancia. Guillermo te cotiza cuando esté libre.";
   }
 
-  // amigable (default)
   return (
     base +
     "📌 Los precios se calculan según la distancia a recorrer por el cadete o comisionista.\n" +
@@ -128,13 +126,11 @@ function mensajeFinalRetiro(datos) {
 function responderBot(mensaje) {
   const texto = mensaje.toLowerCase().trim();
 
-  // Reiniciar conversación
   if (texto.includes("cancelar") || texto.includes("empezar de nuevo")) {
     estado = { paso: null, tipo: null, datos: {} };
     return "Perfecto, empezamos de nuevo. ¿Querés hacer un envío o un retiro?";
   }
 
-  // Paso 0: detectar intención principal
   if (!estado.paso) {
     if (texto.includes("envío") || texto.includes("enviar")) {
       estado.tipo = "envio";
@@ -290,3 +286,33 @@ function responderBot(mensaje) {
 
   return "Estoy siguiendo un proceso paso a paso. Si querés empezar de nuevo, escribí *cancelar*.";
 }
+
+
+// ======================================================
+// SISTEMA DE CHAT (BOTÓN + MENSAJES)
+// ======================================================
+
+const chatBox = document.getElementById("chat-box");
+
+function sendMessage() {
+  const input = document.getElementById("user-input");
+  const text = input.value.trim();
+  if (text === "") return;
+
+  addMessage(text, "user");
+  input.value = "";
+
+  setTimeout(() => {
+    const respuesta = responderBot(text);
+    addMessage(respuesta, "bot");
+  }, 600);
+}
+
+function addMessage(text, sender) {
+  const msg = document.createElement("div");
+  msg.classList.add("message", sender);
+  msg.innerText = text;
+  chatBox.appendChild(msg);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
