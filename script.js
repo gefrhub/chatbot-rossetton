@@ -1,204 +1,145 @@
-// Agregamos esto para que VS Code no marque error de duplicados
-export {}; 
-
 // ======================================================
-// CONFIGURACIÓN INICIAL
+// CONFIGURACIÓN Y ESTADO
 // ======================================================
 
-let estado = {
-  paso: null,
-  tipo: null,
-  datos: {}
+// Usamos un objeto único para evitar colisiones de nombres
+var botEstado = {
+    paso: null,
+    tipo: null,
+    datos: {},
+    saludoEnviado: false
 };
 
-let tono = "amigable";
-let saludoInicialEnviado = false;
-
 const respuestasGracias = [
-  "De nada, muchas gracias vos.",
-  "Gracias a vos.",
-  "Un placer, muchas gracias."
+    "De nada, muchas gracias a vos.",
+    "Gracias a vos.",
+    "Un placer, muchas gracias."
 ];
 
-
 // ======================================================
-// VALIDACIONES
+// FUNCIONES DE APOYO
 // ======================================================
 
 function esTelefonoValido(texto) {
-  const soloNumeros = texto.replace(/\D/g, "");
-  return soloNumeros.length >= 8 && soloNumeros.length <= 15; // Extendí a 15 por seguridad
+    const soloNumeros = texto.replace(/\D/g, "");
+    return soloNumeros.length >= 8 && soloNumeros.length <= 15;
+}
+
+function generarResumen(datos, tipo) {
+    if (tipo === "envio") {
+        return `📦 *RESERVA LISTA*\n\n🟦 ORIGEN: ${datos.origen}\n🟩 DESTINO: ${datos.destino}\n📞 Remitente: ${datos.tel_rem}\n📞 Destinatario: ${datos.tel_dest}\n📝 Notas: ${datos.detalles || "Ninguna"}`;
+    } else {
+        return `📦 *RESERVA RETIRO*\n\n🟦 RETIRO: ${datos.retiro}\n👤 Nombre: ${datos.nombre}\n🟩 ENTREGA: ${datos.entrega}\n📞 Contacto: ${datos.tel_ent}\n📝 Notas: ${datos.detalles || "Ninguna"}`;
+    }
 }
 
 // ======================================================
-// MENSAJES FINALES
-// ======================================================
-
-function mensajeFinalEnvio(datos) {
-  const base =
-    "📦 *RESERVA LISTA*\n\n" +
-    "🟦 *ORIGEN*\n" +
-    `Detalles: ${datos.origen_datos}\n\n` + // Simplifiqué ya que el usuario manda todo junto
-    "🟩 *DESTINO*\n" +
-    `Detalles: ${datos.destino_datos}\n` +
-    `Teléfono remitente: ${datos.telefono_remitente}\n` +
-    `Teléfono destinatario: ${datos.telefono_destinatario}\n\n` +
-    "📝 *Detalles adicionales:*\n" +
-    `${datos.detalles || "Sin detalles adicionales."}\n\n`;
-
-  return (
-    base +
-    "📌 Los precios se calculan según la distancia a recorrer.\n" +
-    "💬 Guillermo te cotizará ni bien esté disponible.\n\n" +
-    "¡Muchas gracias!"
-  );
-}
-
-function mensajeFinalRetiro(datos) {
-  const base =
-    "📦 *RESERVA LISTA (RETIRO)*\n\n" +
-    "🟦 *RETIRO*\n" +
-    `Ubicación: ${datos.retiro_datos}\n` +
-    `A nombre de: ${datos.retiro_nombre}\n` +
-    `Detalles: ${datos.retiro_detalles || "Sin detalles."}\n\n` +
-    "🟩 *ENTREGA*\n" +
-    `Ubicación: ${datos.entrega_datos}\n` +
-    `Teléfono contacto: ${datos.telefono_entrega}\n` +
-    `Detalles entrega: ${datos.entrega_detalles || "Sin detalles."}\n\n`;
-
-  return (
-    base +
-    "📌 Los precios se calculan según la distancia.\n" +
-    "💬 Guillermo te contactará pronto.\n\n" +
-    "¡Muchas gracias!"
-  );
-}
-
-
-// ======================================================
-// LÓGICA PRINCIPAL DEL BOT
+// LÓGICA DEL BOT
 // ======================================================
 
 function responderBot(mensaje) {
-  const texto = mensaje.toLowerCase().trim();
+    const texto = mensaje.toLowerCase().trim();
 
-  // --- CANCELAR ---
-  if (texto.includes("cancelar") || texto.includes("empezar de nuevo")) {
-    estado = { paso: null, tipo: null, datos: {} };
-    return "Perfecto. Empezamos de nuevo. ¿Querés hacer un envío o un retiro?";
-  }
-
-  // --- SALUDO INICIAL ---
-  if (!saludoInicialEnviado) {
-    saludoInicialEnviado = true;
-    return (
-      "Hola, ¿cómo estás? Soy el asistente de Logística Rossetton.\n" +
-      "¿Querés coordinar un envío o un retiro?"
-    );
-  }
-
-  // --- RESPUESTA A GRACIAS ---
-  if (texto === "gracias" || texto === "muchas gracias" || texto === "joya" || texto === "dale") {
-    return respuestasGracias[Math.floor(Math.random() * respuestasGracias.length)];
-  }
-
-  // --- INICIO DE FLUJO ---
-  if (!estado.paso) {
-    if (texto.includes("envío") || texto.includes("enviar")) {
-      estado.tipo = "envio";
-      estado.paso = "origen";
-      return "Perfecto. ¿Me pasás la *dirección y localidad de origen*?";
+    // Resetear
+    if (texto.includes("cancelar") || texto.includes("empezar")) {
+        botEstado = { paso: null, tipo: null, datos: {}, saludoEnviado: true };
+        return "Reinicio el proceso. ¿Querés un *envío* o un *retiro*?";
     }
 
-    if (texto.includes("retiro") || texto.includes("retirar")) {
-      estado.tipo = "retiro";
-      estado.paso = "retiro";
-      return "Listo. ¿Me pasás la *dirección y localidad de retiro*?";
+    // Saludo
+    if (!botEstado.saludoEnviado) {
+        botEstado.saludoEnviado = true;
+        return "Hola, soy el asistente de Logística Rossetton. ¿Querés coordinar un *envío* o un *retiro*?";
     }
 
-    return "¿Querés coordinar un envío o un retiro?";
-  }
-
-  // -------------------------
-  // FLUJO ENVÍO
-  // -------------------------
-  if (estado.tipo === "envio") {
-    if (estado.paso === "origen") {
-      estado.datos.origen_datos = mensaje;
-      estado.paso = "destino";
-      return "Genial. Ahora pasame *dirección y localidad de destino*.";
+    // Flujo inicial
+    if (!botEstado.paso) {
+        if (texto.includes("envío") || texto.includes("enviar")) {
+            botEstado.tipo = "envio";
+            botEstado.paso = "origen";
+            return "Perfecto. Pasame *dirección y localidad de origen*.";
+        }
+        if (texto.includes("retiro") || texto.includes("retirar")) {
+            botEstado.tipo = "retiro";
+            botEstado.paso = "retiro";
+            return "Listo. Pasame *dirección y localidad de retiro*.";
+        }
+        return "¿Querés coordinar un envío o un retiro?";
     }
 
-    if (estado.paso === "destino") {
-      estado.datos.destino_datos = mensaje;
-      estado.paso = "telefono_remitente";
-      return "¿Cuál es el teléfono de quien envía?";
+    // Lógica de Envío
+    if (botEstado.tipo === "envio") {
+        switch (botEstado.paso) {
+            case "origen":
+                botEstado.datos.origen = mensaje;
+                botEstado.paso = "destino";
+                return "Ahora pasame *dirección y localidad de destino*.";
+            case "destino":
+                botEstado.datos.destino = mensaje;
+                botEstado.paso = "tel_rem";
+                return "¿Teléfono de quien envía?";
+            case "tel_rem":
+                if (!esTelefonoValido(mensaje)) return "Número no válido. Solo números por favor.";
+                botEstado.datos.tel_rem = mensaje;
+                botEstado.paso = "tel_dest";
+                return "¿Teléfono de quien recibe?";
+            case "tel_dest":
+                if (!esTelefonoValido(mensaje)) return "Número no válido. Solo números por favor.";
+                botEstado.datos.tel_dest = mensaje;
+                botEstado.paso = "detalles";
+                return "¿Detalles adicionales? (Piso, dpto, etc). Si no hay, poné 'No'.";
+            case "detalles":
+                botEstado.datos.detalles = mensaje;
+                const r = generarResumen(botEstado.datos, "envio");
+                botEstado.paso = null; 
+                return r + "\n\n✅ Guillermo te cotizará pronto.";
+        }
     }
-
-    if (estado.paso === "telefono_remitente") {
-      if (!esTelefonoValido(mensaje)) return "Ese teléfono no parece válido. Pasame solo números.";
-      estado.datos.telefono_remitente = mensaje;
-      estado.paso = "telefono_destinatario";
-      return "¿Y el teléfono de quien recibe?";
-    }
-
-    if (estado.paso === "telefono_destinatario") {
-      if (!esTelefonoValido(mensaje)) return "Ese teléfono no parece válido. Pasame solo números.";
-      estado.datos.telefono_destinatario = mensaje;
-      estado.paso = "detalles";
-      return "¿Algún detalle extra? (piso, dpto, timbre...). Si no, poné 'No'.";
-    }
-
-    if (estado.paso === "detalles") {
-      estado.datos.detalles = mensaje;
-      const resumen = mensajeFinalEnvio(estado.datos);
-      estado = { paso: null, tipo: null, datos: {} };
-      return resumen;
-    }
-  }
-
-  // -------------------------
-  // FLUJO RETIRO (Lógica similar acortada para el ejemplo)
-  // -------------------------
-  if (estado.tipo === "retiro") {
-    if (estado.paso === "retiro") {
-        estado.datos.retiro_datos = mensaje;
-        estado.paso = "retiro_nombre";
-        return "¿A nombre de quién retiramos?";
-    }
-    // ... (El resto de tus pasos de retiro siguen igual)
-  }
-
-  return "No logré entenderte. ¿Podrías repetirlo o escribir 'cancelar' para empezar?";
+    
+    // (Puedes agregar la lógica de retiro aquí de forma similar)
+    return "No entendí, ¿podés repetir?";
 }
 
-
 // ======================================================
-// INTERFAZ (DOM)
+// INTERFAZ (BOTÓN Y CHAT)
 // ======================================================
 
-// Usamos window. para asegurar que la función esté disponible en el HTML
-window.sendMessage = function() {
-  const input = document.getElementById("user-input");
-  const chatBox = document.getElementById("chat-box");
-  const text = input.value.trim();
-  
-  if (text === "" || !chatBox) return;
+// Función vinculada al botón
+function sendMessage() {
+    const input = document.getElementById("user-input");
+    const chatBox = document.getElementById("chat-box");
+    
+    if (!input || !chatBox) return;
 
-  addMessage(text, "user");
-  input.value = "";
+    const text = input.value.trim();
+    if (text === "") return;
 
-  setTimeout(() => {
-    const respuesta = responderBot(text);
-    addMessage(respuesta, "bot");
-  }, 600);
-};
+    // 1. Mostrar mensaje usuario
+    addMessage(text, "user");
+    input.value = "";
+
+    // 2. Respuesta del bot
+    setTimeout(() => {
+        const respuesta = responderBot(text);
+        addMessage(respuesta, "bot");
+    }, 500);
+}
 
 function addMessage(text, sender) {
-  const chatBox = document.getElementById("chat-box");
-  const msg = document.createElement("div");
-  msg.classList.add("message", sender);
-  msg.innerText = text;
-  chatBox.appendChild(msg);
-  chatBox.scrollTop = chatBox.scrollHeight;
+    const chatBox = document.getElementById("chat-box");
+    const msg = document.createElement("div");
+    msg.className = "message " + sender;
+    msg.innerText = text;
+    chatBox.appendChild(msg);
+    chatBox.scrollTop = chatBox.scrollHeight;
 }
+
+// Permitir enviar con la tecla Enter
+document.addEventListener("DOMContentLoaded", () => {
+    const input = document.getElementById("user-input");
+    if(input) {
+        input.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") sendMessage();
+        });
+    }
+});
