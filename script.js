@@ -1,36 +1,292 @@
-const chatBox = document.getElementById("chat-box");
+// ======================================================
+// ESTADO DEL BOT + CONFIGURACIÓN DE TONO
+// ======================================================
 
-function sendMessage() {
-    const input = document.getElementById("user-input");
-    const text = input.value.trim();
-    if (text === "") return;
+let estado = {
+  paso: null,
+  tipo: null,
+  datos: {}
+};
 
-    addMessage(text, "user");
-    input.value = "";
+// Tono del bot: "amigable", "formal", "tecnico", "rapido"
+let tono = "amigable";
 
-    setTimeout(() => {
-        botResponse(text);
-    }, 600);
+
+// ======================================================
+// VALIDACIONES
+// ======================================================
+
+function esTelefonoValido(texto) {
+  const soloNumeros = texto.replace(/\D/g, "");
+  return soloNumeros.length >= 8 && soloNumeros.length <= 12;
 }
 
-function addMessage(text, sender) {
-    const msg = document.createElement("div");
-    msg.classList.add("message", sender);
-    msg.innerText = text;
-    chatBox.appendChild(msg);
-    chatBox.scrollTop = chatBox.scrollHeight;
+function esLocalidadValida(texto) {
+  return texto.length >= 3 && /[a-záéíóúñ]/i.test(texto);
 }
 
-function botResponse(userText) {
-    let response = "No entendí eso, ¿podrías reformularlo?";
+function esDireccionValida(texto) {
+  return texto.length >= 5;
+}
 
-    userText = userText.toLowerCase();
 
-    if (userText.includes("hola")) response = "Hola muchas gracias por tu consulta, ¿en qué puedo ayudarte?";
-    if (userText.includes("precio")) response = "Nuestros precios varían según distancia y tipo de envío.";
-    if (userText.includes(" hacen_envío")) response = "Realizamos envíos y retiros en Santo Tome , Santa Fe y alrededores.";
-    if (userText.includes("horario")) response = "Trabajamos lunes viernes de 9 a 18 hs y sabados de 9 a 12hs.";
-    if (userText.includes("contacto")) response = "Podés escribirnos por WhatsApp o desde este asistente.";
-    if (userText.includes("vehiculos")) response= "Hacemos envios en motos , y tambien tenemos un auto, pero para envios en auto no siempre tenemos disponibilidad , tenes que coordinar con tiempo. ";
-   addMessage(response, "bot");
+// ======================================================
+// MENSAJES FINALES (ENVÍO / RETIRO)
+// ======================================================
+
+function mensajeFinalEnvio(datos) {
+  const base =
+    "📦 RESERVA LISTA\n\n" +
+    "🟦 ORIGEN\n" +
+    `Dirección: ${datos.origen_direccion}\n` +
+    `Localidad: ${datos.origen_localidad}\n\n` +
+    "🟩 DESTINO\n" +
+    `Dirección: ${datos.destino_direccion}\n` +
+    `Localidad: ${datos.destino_localidad}\n` +
+    `Teléfono remitente: ${datos.telefono_remitente}\n` +
+    `Teléfono destinatario: ${datos.telefono_destinatario}\n\n` +
+    "📝 Detalles adicionales:\n" +
+    `${datos.detalles || "Sin detalles adicionales."}\n\n`;
+
+  if (tono === "formal") {
+    return (
+      base +
+      "Los precios se calculan según la distancia a recorrer por el cadete o comisionista.\n" +
+      "Guillermo recibirá esta información y emitirá la cotización en cuanto su agenda se lo permita."
+    );
+  }
+
+  if (tono === "tecnico") {
+    return (
+      base +
+      "Tarifas determinadas por kilómetros recorridos y complejidad operativa.\n" +
+      "Guillermo procesa estos datos y cotiza cuando finaliza las tareas en curso."
+    );
+  }
+
+  if (tono === "rapido") {
+    return base + "Precio según distancia. Guillermo te cotiza cuando esté libre.";
+  }
+
+  // amigable (default)
+  return (
+    base +
+    "📌 Los precios se calculan según la distancia a recorrer por el cadete o comisionista.\n" +
+    "💬 Guillermo puede estar ocupado repartiendo o atendiendo otras consultas, pero ni bien esté disponible te cotiza tu envío.\n" +
+    "Mientras tanto, cuantos más detalles me pases, mejor queda tu reserva lista para que él la ejecute enseguida."
+  );
+}
+
+function mensajeFinalRetiro(datos) {
+  const base =
+    "📦 RESERVA LISTA (RETIRO)\n\n" +
+    "🟦 RETIRO\n" +
+    `Dirección: ${datos.retiro_direccion}\n` +
+    `Localidad: ${datos.retiro_localidad}\n` +
+    `A nombre de: ${datos.retiro_nombre}\n` +
+    `Detalles del lugar: ${datos.retiro_detalles || "Sin detalles adicionales."}\n\n` +
+    "🟩 ENTREGA\n" +
+    `Dirección: ${datos.entrega_direccion}\n` +
+    `Localidad: ${datos.entrega_localidad}\n` +
+    `Teléfono contacto: ${datos.telefono_entrega}\n` +
+    `Detalles de entrega: ${datos.entrega_detalles || "Sin detalles adicionales."}\n\n`;
+
+  if (tono === "formal") {
+    return (
+      base +
+      "Los precios se calculan según la distancia a recorrer por el cadete o comisionista.\n" +
+      "Guillermo recibirá esta información y emitirá la cotización en cuanto su agenda se lo permita."
+    );
+  }
+
+  if (tono === "tecnico") {
+    return (
+      base +
+      "Tarifa basada en kilómetros recorridos y condiciones de acceso.\n" +
+      "Guillermo procesa estos datos y cotiza cuando finaliza las tareas en curso."
+    );
+  }
+
+  if (tono === "rapido") {
+    return base + "Precio según distancia. Guillermo te cotiza cuando esté libre.";
+  }
+
+  // amigable (default)
+  return (
+    base +
+    "📌 Los precios se calculan según la distancia a recorrer por el cadete o comisionista.\n" +
+    "💬 Guillermo puede estar ocupado repartiendo o atendiendo otras consultas, pero ni bien esté disponible te cotiza tu envío.\n" +
+    "Mientras tanto, cuantos más detalles me pases, mejor queda tu reserva lista para que él la ejecute enseguida."
+  );
+}
+
+
+// ======================================================
+// LÓGICA PRINCIPAL DEL BOT
+// ======================================================
+
+function responderBot(mensaje) {
+  const texto = mensaje.toLowerCase().trim();
+
+  // Reiniciar conversación
+  if (texto.includes("cancelar") || texto.includes("empezar de nuevo")) {
+    estado = { paso: null, tipo: null, datos: {} };
+    return "Perfecto, empezamos de nuevo. ¿Querés hacer un envío o un retiro?";
+  }
+
+  // Paso 0: detectar intención principal
+  if (!estado.paso) {
+    if (texto.includes("envío") || texto.includes("enviar")) {
+      estado.tipo = "envio";
+      estado.paso = "origen_direccion";
+      return "Perfecto, vamos a gestionar tu envío. ¿Cuál es la dirección de origen?";
+    }
+
+    if (texto.includes("retiro") || texto.includes("retirar")) {
+      estado.tipo = "retiro";
+      estado.paso = "retiro_direccion";
+      return "Listo, vamos a coordinar el retiro. ¿Desde qué dirección debemos retirar?";
+    }
+
+    return "¿Querés hacer un envío o un retiro?";
+  }
+
+  // -------------------------
+  // FLUJO PARA ENVÍOS
+  // -------------------------
+  if (estado.tipo === "envio") {
+
+    if (estado.paso === "origen_direccion") {
+      if (!esDireccionValida(mensaje)) {
+        return "La dirección de origen me parece incompleta. ¿Podés escribirla un poco más detallada?";
+      }
+      estado.datos.origen_direccion = mensaje;
+      estado.paso = "origen_localidad";
+      return "Perfecto. ¿De qué localidad es el origen?";
+    }
+
+    if (estado.paso === "origen_localidad") {
+      if (!esLocalidadValida(mensaje)) {
+        return "La localidad de origen no me queda clara. ¿Podés confirmarla?";
+      }
+      estado.datos.origen_localidad = mensaje;
+      estado.paso = "destino_direccion";
+      return "Genial. ¿Cuál es la dirección de destino?";
+    }
+
+    if (estado.paso === "destino_direccion") {
+      if (!esDireccionValida(mensaje)) {
+        return "La dirección de destino parece incompleta. ¿Podés detallarla un poco más?";
+      }
+      estado.datos.destino_direccion = mensaje;
+      estado.paso = "destino_localidad";
+      return "¿Y la localidad de destino?";
+    }
+
+    if (estado.paso === "destino_localidad") {
+      if (!esLocalidadValida(mensaje)) {
+        return "La localidad de destino no me queda clara. ¿Podés confirmarla?";
+      }
+      estado.datos.destino_localidad = mensaje;
+      estado.paso = "telefono_remitente";
+      return "Perfecto. ¿Cuál es el teléfono de quien envía?";
+    }
+
+    if (estado.paso === "telefono_remitente") {
+      if (!esTelefonoValido(mensaje)) {
+        return "Ese teléfono no me parece válido. ¿Podés escribir solo números, sin espacios ni guiones?";
+      }
+      estado.datos.telefono_remitente = mensaje;
+      estado.paso = "telefono_destinatario";
+      return "¿Y el teléfono de quien recibe?";
+    }
+
+    if (estado.paso === "telefono_destinatario") {
+      if (!esTelefonoValido(mensaje)) {
+        return "Ese teléfono no me parece válido. Probá de nuevo solo con números.";
+      }
+      estado.datos.telefono_destinatario = mensaje;
+      estado.paso = "detalles";
+      return "¿Querés agregar detalles sobre las direcciones? (piso, dpto, oficina, clínica, timbre, etc.)";
+    }
+
+    if (estado.paso === "detalles") {
+      estado.datos.detalles = mensaje;
+      const resumen = mensajeFinalEnvio(estado.datos);
+      estado = { paso: null, tipo: null, datos: {} };
+      return resumen;
+    }
+  }
+
+  // -------------------------
+  // FLUJO PARA RETIROS
+  // -------------------------
+  if (estado.tipo === "retiro") {
+
+    if (estado.paso === "retiro_direccion") {
+      if (!esDireccionValida(mensaje)) {
+        return "La dirección de retiro parece incompleta. ¿Podés detallarla un poco más?";
+      }
+      estado.datos.retiro_direccion = mensaje;
+      estado.paso = "retiro_localidad";
+      return "Perfecto. ¿De qué localidad debemos retirar?";
+    }
+
+    if (estado.paso === "retiro_localidad") {
+      if (!esLocalidadValida(mensaje)) {
+        return "La localidad de retiro no me queda clara. ¿Podés confirmarla?";
+      }
+      estado.datos.retiro_localidad = mensaje;
+      estado.paso = "retiro_nombre";
+      return "¿A nombre de quién retiramos?";
+    }
+
+    if (estado.paso === "retiro_nombre") {
+      estado.datos.retiro_nombre = mensaje;
+      estado.paso = "retiro_detalles";
+      return "¿El lugar de retiro tiene detalles? (piso, dpto, oficina, sector, nombre del local, clínica, sanatorio, etc.)";
+    }
+
+    if (estado.paso === "retiro_detalles") {
+      estado.datos.retiro_detalles = mensaje;
+      estado.paso = "entrega_direccion";
+      return "Perfecto. ¿A qué dirección debemos entregar?";
+    }
+
+    if (estado.paso === "entrega_direccion") {
+      if (!esDireccionValida(mensaje)) {
+        return "La dirección de entrega parece incompleta. ¿Podés detallarla un poco más?";
+      }
+      estado.datos.entrega_direccion = mensaje;
+      estado.paso = "entrega_localidad";
+      return "¿Y la localidad de entrega?";
+    }
+
+    if (estado.paso === "entrega_localidad") {
+      if (!esLocalidadValida(mensaje)) {
+        return "La localidad de entrega no me queda clara. ¿Podés confirmarla?";
+      }
+      estado.datos.entrega_localidad = mensaje;
+      estado.paso = "telefono_entrega";
+      return "¿Tenés un número de teléfono de contacto para la entrega?";
+    }
+
+    if (estado.paso === "telefono_entrega") {
+      if (!esTelefonoValido(mensaje)) {
+        return "Ese teléfono no me parece válido. Probá de nuevo solo con números.";
+      }
+      estado.datos.telefono_entrega = mensaje;
+      estado.paso = "entrega_detalles";
+      return "¿Querés agregar detalles sobre la entrega? (piso, dpto, oficina, timbre, etc.)";
+    }
+
+    if (estado.paso === "entrega_detalles") {
+      estado.datos.entrega_detalles = mensaje;
+      const resumen = mensajeFinalRetiro(estado.datos);
+      estado = { paso: null, tipo: null, datos: {} };
+      return resumen;
+    }
+  }
+
+  return "Estoy siguiendo un proceso paso a paso. Si querés empezar de nuevo, escribí *cancelar*.";
 }
