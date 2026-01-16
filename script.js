@@ -1,10 +1,12 @@
+
 // ======================================================
 // CONFIGURACIÓN Y ESTADO
 // ======================================================
 
 var botEstado = {
-    paso: null,
+    paso: "saludo", // Iniciamos en saludo
     tipo: null,
+    nombreCliente: "", // Para guardar el nombre
     datos: {},
     saludoEnviado: false
 };
@@ -26,9 +28,9 @@ function esTelefonoValido(texto) {
 
 function generarResumen(datos, tipo) {
     if (tipo === "envio") {
-        return `📦 *RESERVA LISTA*\n\n🟦 ORIGEN: ${datos.origen}\n🟩 DESTINO: ${datos.destino}\n📞 Remitente: ${datos.tel_rem}\n📞 Destinatario: ${datos.tel_dest}\n📝 Notas: ${datos.detalles || "Ninguna"}`;
+        return `📦 *RESERVA LISTA*\n\n🟦 ORIGEN: ${datos.origen}\n🟩 DESTINO: ${datos.destino}\n📞 Remitente: ${datos.tel_rem}\n📞 Destinatario: ${datos.tel_dest}\n📝 Notas/Pago: ${datos.detalles || "Ninguna"}`;
     } else {
-        return `📦 *RESERVA RETIRO*\n\n🟦 RETIRO: ${datos.retiro}\n👤 Nombre: ${datos.nombre}\n🟩 ENTREGA: ${datos.entrega}\n📞 Contacto: ${datos.tel_ent}\n📝 Notas: ${datos.detalles || "Ninguna"}`;
+        return `📦 *RESERVA RETIRO*\n\n🟦 RETIRO: ${datos.retiro}\n👤 Nombre: ${datos.nombre}\n🟩 ENTREGA: ${datos.entrega}\n📞 Contacto: ${datos.tel_ent}\n📝 Notas/Pago: ${datos.detalles || "Ninguna"}`;
     }
 }
 
@@ -38,128 +40,135 @@ function generarResumen(datos, tipo) {
 
 function responderBot(mensaje) {
     const texto = mensaje.toLowerCase().trim();
-
-    // Respuestas a "gracias"
-    if (texto.includes("gracias")) {
-        return respuestasGracias[Math.floor(Math.random() * respuestasGracias.length)];
-    }
+    const linkWA = "https://wa.me/5493426396085";
 
     // Resetear
     if (texto.includes("cancelar") || texto.includes("empezar")) {
-        botEstado = { paso: null, tipo: null, datos: {}, saludoEnviado: true };
-        return "Perfecto, reiniciamos el proceso. ¿Querés coordinar un *envío* o un *retiro*?";
+        botEstado = { paso: "menu", tipo: null, nombreCliente: botEstado.nombreCliente, datos: {}, saludoEnviado: true };
+        return `Perfecto, reiniciamos. ¿En qué puedo ayudarte, ${botEstado.nombreCliente}?\n1- Envío\n2- Retiro\n3- Quiero hacer una consulta`;
     }
 
-    // Saludo inicial
-    if (!botEstado.saludoEnviado) {
-        botEstado.saludoEnviado = true;
-        return "Hola 👋 Soy el asistente de Logística Rossetton. ¿Querés coordinar un *envío* o un *retiro*?";
+    // --- PASO 1: SALUDO Y NOMBRE ---
+    if (botEstado.paso === "saludo") {
+        botEstado.paso = "preguntar_nombre";
+        return "Hola 👋 Soy el asistente virtual de Logística Rossetton. ¿Cómo es tu nombre?";
     }
 
-    // Flujo inicial
-    if (!botEstado.paso) {
-        if (texto.includes("envío") || texto.includes("enviar")) {
+    if (botEstado.paso === "preguntar_nombre") {
+        botEstado.nombreCliente = mensaje;
+        botEstado.paso = "menu";
+        return `Perfecto, ${botEstado.nombreCliente}, ¿en qué puedo ayudarte? Por favor elige una opción:\n1- Envío\n2- Retiro\n3- Quiero hacer una consulta`;
+    }
+
+    // --- PASO 2: MENÚ PRINCIPAL ---
+    if (botEstado.paso === "menu") {
+        if (texto === "1" || texto.includes("envío") || texto.includes("enviar")) {
             botEstado.tipo = "envio";
             botEstado.paso = "origen";
-            return "Perfecto. ¿Cuál es la *dirección y localidad de origen*?";
+            return "Perfecto muchas gracias, ¿me dirías cuál es la dirección y localidad de origen?";
         }
-        if (texto.includes("retiro") || texto.includes("retirar")) {
+        if (texto === "2" || texto.includes("retiro") || texto.includes("retirar")) {
             botEstado.tipo = "retiro";
             botEstado.paso = "retiro";
-            return "Listo. Pasame la *dirección y localidad de retiro*.";
+            return "Genial! muchas gracias por contar con nosotros, ¿me dirías cuál es la dirección y localidad de origen del retiro?";
         }
-        return "Disculpá, no entendí bien. ¿Querés coordinar un *envío* o un *retiro*?";
+        if (texto === "3" || texto.includes("consulta")) {
+            botEstado.paso = "consulta_abierta";
+            return "Excelente, ¿qué necesitas consultar? Si eso está dentro de los datos que tengo cargados en mi memoria te asesoro enseguida, sino aguarda que Guillermo ni bien esté disponible te contesta por WhatsApp 🤖";
+        }
+        return "Por favor, elige una opción:\n1- Envío\n2- Retiro\n3- Consulta";
+    }
+
+    // --- PASO 3: CONSULTA ---
+    if (botEstado.paso === "consulta_abierta") {
+        if (texto.includes("horario") || texto.includes("días")) {
+            return "Atendemos de lunes a viernes de 8 a 18hs. ¿Deseas consultar algo más?";
+        }
+        if (texto.includes("precio") || texto.includes("cuánto") || texto.includes("costo")) {
+            return "Los precios dependen de la distancia. Te sugiero iniciar un pedido (opción 1 o 2) para que Guillermo te cotice.";
+        }
+        return "Lo siento, no tengo información sobre esa consulta, 💔. Reformula tu pregunta o espera a que Guillermo te responda por WhatsApp. Soy un bot con memoria limitada y estoy a prueba, aprendiendo. ✍️";
     }
 
     // ======================================================
     // FLUJO DE ENVÍO
     // ======================================================
-
     if (botEstado.tipo === "envio") {
         switch (botEstado.paso) {
             case "origen":
                 botEstado.datos.origen = mensaje;
                 botEstado.paso = "destino";
-                return "Perfecto. Ahora pasame la *dirección y localidad de destino*.";
+                return "Excelente!, ¿y cuál es la dirección y localidad de destino?";
 
             case "destino":
                 botEstado.datos.destino = mensaje;
                 botEstado.paso = "tel_rem";
-                return "¿Cuál es el *teléfono del remitente*?";
+                return "Magnifico! ¿Cuál es el teléfono de quien envía?";
 
             case "tel_rem":
-                if (!esTelefonoValido(mensaje)) {
-                    return "Parece que ese número no es válido. ¿Podés enviarlo solo con números?";
-                }
+                if (!esTelefonoValido(mensaje)) return "Parece que ese número no es válido. ¿Podés enviarlo solo con números?";
                 botEstado.datos.tel_rem = mensaje;
                 botEstado.paso = "tel_dest";
-                return "Genial. ¿Y el *teléfono del destinatario*?";
+                return "¿Y el teléfono de quien recibe?";
 
             case "tel_dest":
-                if (!esTelefonoValido(mensaje)) {
-                    return "Ese número no parece correcto. Probá enviarlo solo con números.";
-                }
+                if (!esTelefonoValido(mensaje)) return "Ese número no parece correcto. Probá enviarlo solo con números.";
                 botEstado.datos.tel_dest = mensaje;
                 botEstado.paso = "detalles";
-                return "¿Querés agregar *detalles adicionales*? (Piso, dpto, referencias). Si no, escribí 'No'.";
+                return "¿Quieres agregar algún detalle más? Necesitamos en lo posible teléfono de quien recibe, o ej: piso, dpto, oficina, local, clínica, si no anda el timbre o forma de pago (efectivo o transferencia).";
 
             case "detalles":
                 botEstado.datos.detalles = mensaje;
                 const resumenEnvio = generarResumen(botEstado.datos, "envio");
-                botEstado.paso = null;
-                return resumenEnvio + "\n\n✅ Guillermo te enviará la cotización en breve.";
+                botEstado.paso = "menu";
+                return resumenEnvio + `\n\nMuchas gracias por detallar todo, Guillermo en breve te cotizará tu pedido, que tengas una excelente jornada ❤️\n\nSi prefieres, puedes contactarlo aquí: ${linkWA}`;
         }
     }
 
     // ======================================================
     // FLUJO DE RETIRO
     // ======================================================
-
     if (botEstado.tipo === "retiro") {
         switch (botEstado.paso) {
             case "retiro":
                 botEstado.datos.retiro = mensaje;
                 botEstado.paso = "nombre";
-                return "Perfecto. ¿A nombre de quién retiramos?";
+                return "Entendido 🫶, ¿A nombre de quién retiramos?";
 
             case "nombre":
                 botEstado.datos.nombre = mensaje;
                 botEstado.paso = "entrega";
-                return "¿Dónde debemos *entregar* el paquete? (Dirección y localidad)";
+                return "¿Y cuál es la dirección de destino?";
 
             case "entrega":
                 botEstado.datos.entrega = mensaje;
                 botEstado.paso = "tel_ent";
-                return "¿Cuál es el *teléfono de contacto*?";
+                return "¿Cuál es el teléfono de contacto?";
 
             case "tel_ent":
-                if (!esTelefonoValido(mensaje)) {
-                    return "Ese número no parece válido. ¿Podés enviarlo solo con números?";
-                }
+                if (!esTelefonoValido(mensaje)) return "Ese número no es válido. Pasame solo números.";
                 botEstado.datos.tel_ent = mensaje;
                 botEstado.paso = "detalles";
-                return "¿Querés agregar *detalles adicionales*? Si no, escribí 'No'.";
+                return "¿Quieres agregar alguna instrucción más? ej: piso, dpto, oficina, local, clínica, si no anda el timbre o forma de pago (efectivo o transferencia).";
 
             case "detalles":
                 botEstado.datos.detalles = mensaje;
                 const resumenRetiro = generarResumen(botEstado.datos, "retiro");
-                botEstado.paso = null;
-                return resumenRetiro + "\n\n✅ Guillermo te confirmará el retiro en breve.";
+                botEstado.paso = "menu";
+                return resumenRetiro + `\n\nMuchas gracias por detallar todo, Guillermo en breve te cotizará tu pedido, que tengas una excelente jornada ❤️\n\nContacto directo: ${linkWA}`;
         }
     }
 
-    // Si nada coincide
-    return "Perdón, no entendí bien. ¿Podés reformularlo?";
+    return "Lo siento, no tengo información sobre esa consulta, 💔. Reformula tu pregunta o espera a que Guillermo te responda por WhatsApp. ✍️";
 }
 
 // ======================================================
-// INTERFAZ (BOTÓN Y CHAT)
+// INTERFAZ (BOTÓN Y CHAT) - Sin cambios
 // ======================================================
 
 function sendMessage() {
     const input = document.getElementById("user-input");
     const chatBox = document.getElementById("chat-box");
-    
     if (!input || !chatBox) return;
 
     const text = input.value.trim();
@@ -184,6 +193,11 @@ function addMessage(text, sender) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    // Iniciamos el saludo automáticamente
+    setTimeout(() => {
+        addMessage(responderBot("hola"), "bot");
+    }, 500);
+
     const input = document.getElementById("user-input");
     if(input) {
         input.addEventListener("keypress", (e) => {
