@@ -1,12 +1,11 @@
-
 // ======================================================
 // CONFIGURACIÓN Y ESTADO
 // ======================================================
 
 var botEstado = {
-    paso: "saludo", // Iniciamos en saludo
+    paso: "saludo", 
     tipo: null,
-    nombreCliente: "", // Para guardar el nombre
+    nombreCliente: "", 
     datos: {},
     saludoEnviado: false
 };
@@ -21,16 +20,11 @@ const respuestasGracias = [
 // FUNCIONES DE APOYO
 // ======================================================
 
-function esTelefonoValido(texto) {
-    const soloNumeros = texto.replace(/\D/g, "");
-    return soloNumeros.length >= 8 && soloNumeros.length <= 15;
-}
-
 function generarResumen(datos, tipo) {
     if (tipo === "envio") {
-        return `📦 *RESERVA LISTA*\n\n🟦 ORIGEN: ${datos.origen}\n🟩 DESTINO: ${datos.destino}\n📞 Remitente: ${datos.tel_rem}\n📞 Destinatario: ${datos.tel_dest}\n📝 Notas/Pago: ${datos.detalles || "Ninguna"}`;
+        return `📦 *RESERVA LISTA*\n\n🟦 ORIGEN: ${datos.origen}\n🟩 DESTINO: ${datos.destino}\n📝 Detalles/Teléfonos/Pago: ${datos.detalles || "No especificado"}`;
     } else {
-        return `📦 *RESERVA RETIRO*\n\n🟦 RETIRO: ${datos.retiro}\n👤 Nombre: ${datos.nombre}\n🟩 ENTREGA: ${datos.entrega}\n📞 Contacto: ${datos.tel_ent}\n📝 Notas/Pago: ${datos.detalles || "Ninguna"}`;
+        return `📦 *RESERVA RETIRO*\n\n🟦 RETIRO: ${datos.retiro}\n👤 A nombre de: ${datos.nombre}\n🟩 ENTREGA: ${datos.entrega}\n📝 Detalles/Teléfonos/Pago: ${datos.detalles || "No especificado"}`;
     }
 }
 
@@ -55,7 +49,10 @@ function responderBot(mensaje) {
     }
 
     if (botEstado.paso === "preguntar_nombre") {
-        botEstado.nombreCliente = mensaje;
+        // Corrección de identidad: Limpiamos frases comunes para quedarnos solo con el nombre
+        let nombreLimpio = mensaje.replace(/hola|soy|me llamo|mi nombre es/gi, "").trim();
+        botEstado.nombreCliente = nombreLimpio || mensaje;
+        
         botEstado.paso = "menu";
         return `Perfecto, ${botEstado.nombreCliente}, ¿en qué puedo ayudarte? Por favor elige una opción:\n1- Envío\n2- Retiro\n3- Quiero hacer una consulta`;
     }
@@ -102,20 +99,8 @@ function responderBot(mensaje) {
 
             case "destino":
                 botEstado.datos.destino = mensaje;
-                botEstado.paso = "tel_rem";
-                return "Magnifico! ¿Cuál es el teléfono de quien envía?";
-
-            case "tel_rem":
-                if (!esTelefonoValido(mensaje)) return "Parece que ese número no es válido. ¿Podés enviarlo solo con números?";
-                botEstado.datos.tel_rem = mensaje;
-                botEstado.paso = "tel_dest";
-                return "¿Y el teléfono de quien recibe?";
-
-            case "tel_dest":
-                if (!esTelefonoValido(mensaje)) return "Ese número no parece correcto. Probá enviarlo solo con números.";
-                botEstado.datos.tel_dest = mensaje;
                 botEstado.paso = "detalles";
-                return "¿Quieres agregar algún detalle más? Necesitamos en lo posible teléfono de quien recibe, o ej: piso, dpto, oficina, local, clínica, si no anda el timbre o forma de pago (efectivo o transferencia).";
+                return "¿Quieres agregar algún detalle o instrucción más?\n\n<small>Necesitamos teléfonos (origen y destino), piso, dpto, oficina, local, clínica, si no anda el timbre o forma de pago (efectivo o transferencia).</small>";
 
             case "detalles":
                 botEstado.datos.detalles = mensaje;
@@ -138,18 +123,12 @@ function responderBot(mensaje) {
             case "nombre":
                 botEstado.datos.nombre = mensaje;
                 botEstado.paso = "entrega";
-                return "¿Y cuál es la dirección de destino?";
+                return "¿Y cuál es la dirección y localidad de destino?";
 
             case "entrega":
                 botEstado.datos.entrega = mensaje;
-                botEstado.paso = "tel_ent";
-                return "¿Cuál es el teléfono de contacto?";
-
-            case "tel_ent":
-                if (!esTelefonoValido(mensaje)) return "Ese número no es válido. Pasame solo números.";
-                botEstado.datos.tel_ent = mensaje;
                 botEstado.paso = "detalles";
-                return "¿Quieres agregar alguna instrucción más? ej: piso, dpto, oficina, local, clínica, si no anda el timbre o forma de pago (efectivo o transferencia).";
+                return "¿Quieres agregar alguna instrucción más?\n\n<small>Necesitamos teléfonos (origen y destino), piso, dpto, oficina, local, clínica, si no anda el timbre o forma de pago (efectivo o transferencia).</small>";
 
             case "detalles":
                 botEstado.datos.detalles = mensaje;
@@ -159,11 +138,12 @@ function responderBot(mensaje) {
         }
     }
 
-    return "Lo siento, no tengo información sobre esa consulta, 💔. Reformula tu pregunta o espera a que Guillermo te responda por WhatsApp. ✍️";
+    // RESPUESTA AMABLE POR DEFECTO
+    return "Lo siento, no tengo información sobre esa consulta, 💔. Reformula tu pregunta o espera a que Guillermo te responda por WhatsApp. Soy un bot con memoria limitada y estoy a prueba, aprendiendo. ✍️";
 }
 
 // ======================================================
-// INTERFAZ (BOTÓN Y CHAT) - Sin cambios
+// INTERFAZ (BOTÓN Y CHAT)
 // ======================================================
 
 function sendMessage() {
@@ -187,13 +167,15 @@ function addMessage(text, sender) {
     const chatBox = document.getElementById("chat-box");
     const msg = document.createElement("div");
     msg.className = "message " + sender;
-    msg.innerText = text;
+    
+    // Usamos innerHTML para que reconozca la etiqueta <small> y los saltos de línea
+    msg.innerHTML = text.replace(/\n/g, '<br>');
+    
     chatBox.appendChild(msg);
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Iniciamos el saludo automáticamente
     setTimeout(() => {
         addMessage(responderBot("hola"), "bot");
     }, 500);
