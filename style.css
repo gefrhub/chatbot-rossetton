@@ -1,3 +1,4 @@
+
 body {
     background: linear-gradient(135deg, #e3f2fd, #f2f2f2);
     font-family: Arial, sans-serif;
@@ -31,6 +32,8 @@ body {
     overflow-y: auto;
     padding: 15px;
     background: #fafafa;
+    display: flex; /* Añadido para mejor control de burbujas */
+    flex-direction: column;
 }
 
 .message {
@@ -40,6 +43,19 @@ body {
     max-width: 80%;
     line-height: 1.4;
     animation: pop 0.25s ease;
+    word-wrap: break-word; /* Para que textos largos no se salgan */
+}
+
+/* --- ESTILO PARA LOS EJEMPLOS (WEB STYLE) --- */
+small {
+    display: block;
+    font-size: 0.82em;
+    opacity: 0.7;
+    font-weight: 300;
+    margin-top: 8px;
+    line-height: 1.3;
+    border-top: 1px solid rgba(0,0,0,0.05);
+    padding-top: 5px;
 }
 
 .user {
@@ -47,11 +63,14 @@ body {
     align-self: flex-end;
     margin-left: auto;
     box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    border-bottom-right-radius: 2px; /* Efecto punta de burbuja */
 }
 
 .bot {
     background: #e6e6e6;
+    align-self: flex-start; /* Asegura que esté a la izquierda */
     box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    border-bottom-left-radius: 2px; /* Efecto punta de burbuja */
 }
 
 .input-area {
@@ -101,4 +120,13 @@ button:hover {
 @keyframes pop {
     from { transform: scale(0.95); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
+}
+
+/* Personalización de la barra de desplazamiento */
+.chat-box::-webkit-scrollbar {
+    width: 6px;
+}
+.chat-box::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 10px;
 }
