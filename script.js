@@ -340,48 +340,6 @@ function mensajeFinalEnvio(datos) {
   );
 }
 
-function mensajeFinalRetiro(datos) {
-  const base =
-    "📦 RESERVA LISTA (RETIRO)\n\n" +
-    "🟦 RETIRO\n" +
-    `Dirección: ${datos.retiro_direccion}\n` +
-    `Localidad: ${datos.retiro_localidad}\n` +
-    `A nombre de: ${datos.retiro_nombre}\n` +
-    `Detalles del lugar: ${datos.retiro_detalles || "Sin detalles adicionales."}\n\n` +
-    "🟩 ENTREGA\n" +
-    `Dirección: ${datos.entrega_direccion}\n` +
-    `Localidad: ${datos.entrega_localidad}\n` +
-    `Teléfono contacto: ${datos.telefono_entrega}\n` +
-    `Detalles de entrega: ${datos.entrega_detalles || "Sin detalles adicionales."}\n\n`;
-
-  if (tono === "formal") {
-    return (
-      base +
-      "Los precios se calculan según la distancia a recorrer por el cadete o comisionista.\n" +
-      "Guillermo recibirá esta información y emitirá la cotización en cuanto su agenda se lo permita."
-    );
-  }
-
-  if (tono === "tecnico") {
-    return (
-      base +
-      "Tarifa basada en kilómetros recorridos y condiciones de acceso.\n" +
-      "Guillermo procesa estos datos y cotiza cuando finaliza las tareas en curso."
-    );
-  }
-
-  if (tono === "rapido") {
-    return base + "Precio según distancia. Guillermo te cotiza cuando esté libre.";
-  }
-
-  return (
-    base +
-    "📌 Los precios se calculan según la distancia a recorrer por el cadete o comisionista.\n" +
-    "💬 Guillermo puede estar ocupado repartiendo o atendiendo otras consultas, pero ni bien esté disponible te cotiza tu envío.\n" +
-    "Mientras tanto, cuantos más detalles me pases, mejor queda tu reserva lista para que él la ejecute enseguida."
-  );
-}
-
 
 // ======================================================
 // LÓGICA PRINCIPAL DEL BOT
@@ -579,5 +537,6 @@ function addMessage(text, sender) {
   chatBox.appendChild(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
+
 
 
