@@ -1,5 +1,5 @@
 // ======================================================
-// CONFIGURACIÓN LOGÍSTICA ROSSETTON - V3.7 (CEREBRO PRIORITARIO)
+// CONFIGURACIÓN LOGÍSTICA ROSSETTON - V3.9 (CEREBRO AVANZADO + LIMPIADOR)
 // ======================================================
 
 const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbys09jDL6F1pQpySwUO9m5nykao1q3tzTjg3ajJu5X79inxi79VHdNXns0KTWo2U7ot/exec";
@@ -18,10 +18,19 @@ var botEstado = {
 };
 
 // ======================================================
-// MOTOR DE INTELIGENCIA
+// MOTOR DE INTELIGENCIA Y LIMPIEZA
 // ======================================================
 
+function esDireccionIncompleta(dir) {
+    if (!dir) return true;
+    const palabras = dir.split(" ");
+    const tieneNumero = /\d/.test(dir);
+    // Si tiene menos de 3 palabras y no tiene números (ej: "mi casa"), es incompleta
+    return (palabras.length < 3 && !tieneNumero);
+}
+
 function analizarMensaje(texto) {
+    // 1. Detección de Tipo
     const envioKeywords = /envio|enviara|mandar|llevar|alcanzar|dejar|lleven|manden|lleve/i;
     const retiroKeywords = /retiro|retirar|traer|busquen|busc|traigan|buscame|traeme/i;
 
@@ -34,14 +43,26 @@ function analizarMensaje(texto) {
         botEstado.tipo = "envio";
     }
 
-    const regHasta = /(?:hasta|hacia|a la|al|destino|para|llevalo a|entregalo en) ([\w\sÁÉÍÓÚáéíóúñ]+)/i;
-    const regDesde = /(?:desde|de|origen|salida|en|buscalo en|retiralo en) ([\w\sÁÉÍÓÚáéíóúñ]+)/i;
+    // 2. Limpiador de prefijos ("mi casa es...", "mi dire...")
+    const limpiarDireccion = (t) => {
+        return t.replace(/mi casa es|mi dire es|mi dirección es|mi direccion es|mi dire|mi direccion|mi casa/gi, "").trim();
+    };
+
+    // 3. Extracción de Origen y Destino
+    const regHasta = /(?:hasta|hacia|a la|al|destino|para|llevalo a|entregalo en) ([\w\sÁÉÍÓÚáéíóúñ0-9]+)/i;
+    const regDesde = /(?:desde|de|origen|salida|en|buscalo en|retiralo en) ([\w\sÁÉÍÓÚáéíóúñ0-9]+)/i;
 
     const matchHasta = texto.match(regHasta);
     const matchDesde = texto.match(regDesde);
 
-    if (matchHasta) botEstado.datos.destino = matchHasta[1].trim();
-    if (matchDesde) botEstado.datos.origen = matchDesde[1].trim();
+    if (matchHasta) {
+        let limpio = limpiarDireccion(matchHasta[1]);
+        if (!esDireccionIncompleta(limpio)) botEstado.datos.destino = limpio;
+    }
+    if (matchDesde) {
+        let limpio = limpiarDireccion(matchDesde[1]);
+        if (!esDireccionIncompleta(limpio)) botEstado.datos.origen = limpio;
+    }
 }
 
 // ======================================================
@@ -51,14 +72,12 @@ function analizarMensaje(texto) {
 function responderBot(mensaje) {
     const texto = mensaje.toLowerCase().trim();
     
-    // 1. ANALIZAR PRIMERO (Para ver si hay un pedido oculto)
-    const teniaDatosAntes = (botEstado.datos.origen !== "" || botEstado.datos.destino !== "");
+    // 1. ANALIZAR PRIMERO (Prioridad a los datos sobre la despedida)
     analizarMensaje(texto);
     const tieneDatosAhora = (botEstado.datos.origen !== "" || botEstado.datos.destino !== "");
 
-    // 2. DETECTOR DE DESPEDIDA (Solo si NO hay datos nuevos en este mensaje)
+    // 2. DETECTOR DE DESPEDIDA (Solo si no hay datos nuevos)
     const esSoloDespedida = /^(gracias|listo|eso es todo|nada mas|chau|hasta pronto|no necesito nada mas|ya esta)$/i.test(texto);
-    
     if (esSoloDespedida && !tieneDatosAhora) {
         return "¡De nada! Fue un placer ayudarte ❤️. Cualquier otra cosa que necesites, acá voy a estar. ¡Que tengas un excelente día!";
     }
@@ -86,15 +105,15 @@ function responderBot(mensaje) {
         return `¡Mucho gusto, ${botEstado.nombreCliente}! ¿Querés coordinar un <b>Envío</b> o un <b>Retiro</b>? Podés decirme todo el pedido directamente.`;
     }
 
-    // 4. FLUJO DE TRABAJO (Si detectó tipo de pedido)
+    // 4. FLUJO DE TRABAJO
     if (botEstado.tipo) {
-        if (!botEstado.datos.origen) {
+        if (!botEstado.datos.origen || esDireccionIncompleta(botEstado.datos.origen)) {
             botEstado.paso = "origen";
-            return "Entendido. ¿De qué <b>dirección y localidad</b> saldría el pedido?";
+            return "Entendido. ¿De qué <b>calle, altura y localidad</b> saldría el pedido?";
         }
-        if (!botEstado.datos.destino) {
+        if (!botEstado.datos.destino || esDireccionIncompleta(botEstado.datos.destino)) {
             botEstado.paso = "destino";
-            return `Sale de ${botEstado.datos.origen}. ¿Hacia qué <b>dirección y localidad</b> va?`;
+            return `Anotado. ¿Hacia qué <b>calle, altura y localidad</b> lo llevamos?`;
         }
         if (botEstado.tipo === "retiro" && !botEstado.datos.nombre) {
             botEstado.paso = "nombre_quien";
@@ -108,21 +127,24 @@ function responderBot(mensaje) {
     }
 
     if (botEstado.paso === "finalizar") {
-        // Aquí limpiamos el "nada mas" o "eso es todo" del campo detalles si apareciera
         let detallesLimpios = mensaje.replace(/nada mas|eso es todo|listo|gracias/gi, "").trim();
-        botEstado.datos.detalles = detallesLimpios + (botEstado.esIdaVuelta ? " [CON RETORNO]" : "");
+        botEstado.datos.detalles = (detallesLimpios === "" ? "Sin detalles" : detallesLimpios) + (botEstado.esIdaVuelta ? " [CON RETORNO]" : "");
         
         enviarNotificacion(botEstado.datos);
         const res = generarResumen(botEstado.datos, botEstado.tipo);
         botEstado.paso = "menu"; botEstado.tipo = null;
-        return `¡Perfecto! Ya le avisé a Guillermo.<br><br>${res}<br><br>Te contactamos en breve. ¡Muchas gracias por elegirnos! ❤️`;
+        // Limpiamos datos para el próximo pedido
+        botEstado.datos = { origen: "", destino: "", detalles: "", nombre: "" };
+        botEstado.esIdaVuelta = false;
+        
+        return `¡Perfecto! Ya le avisé a Guillermo.<br><br>${res}<br><br>Te contactamos en breve. ¡Muchas gracias! ❤️`;
     }
 
     return "Lo siento, todavía estoy aprendiendo 🤔. ¿Podrías decirme si necesitas un <b>Envío</b> o <b>Retiro</b>?";
 }
 
 // ======================================================
-// INTERFAZ Y FUNCIONES AUXILIARES (IGUALES)
+// INTERFAZ Y FUNCIONES AUXILIARES
 // ======================================================
 
 function sendMessage() {
@@ -152,7 +174,7 @@ function enviarNotificacion(datosFinales) {
     if (!URL_GOOGLE_SHEETS || URL_GOOGLE_SHEETS.includes("TU_URL")) return;
     const formData = new URLSearchParams();
     formData.append("nombre", botEstado.nombreCliente);
-    formData.append("tipo", botEstado.tipo + (botEstado.esIdaVuelta ? " + RETORNO" : ""));
+    formData.append("tipo", (botEstado.tipo || "Envio") + (botEstado.esIdaVuelta ? " + RETORNO" : ""));
     formData.append("origen", datosFinales.origen);
     formData.append("destino", datosFinales.destino);
     formData.append("detalles", datosFinales.detalles);
@@ -160,7 +182,7 @@ function enviarNotificacion(datosFinales) {
 }
 
 function generarResumen(datos, tipo) {
-    let t = botEstado.esIdaVuelta ? "IDA Y VUELTA" : tipo.toUpperCase();
+    let t = botEstado.esIdaVuelta ? "IDA Y VUELTA" : (tipo ? tipo.toUpperCase() : "ENVÍO");
     return `📦 <b>${t}</b><br>🟦 DE: ${datos.origen}<br>🟩 A: ${datos.destino}<br>📝 INFO: ${datos.detalles}`;
 }
 
