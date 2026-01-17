@@ -41,18 +41,18 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    flex-shrink: 0; /* Evita que el círculo se aplaste */
 }
 
 .profile-pic img {
     width: 100%;
     height: 100%;
-    object-fit: cover; /* Centra y ajusta tu logo rossetton */
+    object-fit: cover;
 }
 
 .header-info { display: flex; flex-direction: column; }
 .header-title { font-size: 17px; font-weight: bold; }
 
-/* PUNTO VERDE TITILANDO */
 .status-online {
     font-size: 12px;
     display: flex;
@@ -71,7 +71,7 @@ body {
     animation: blink 1.5s infinite;
 }
 
-/* FONDO WHATSAPP ACLARADO (LOGÍSTICA) */
+/* FONDO FORZADO - Si la imagen falla, verás el color beige de WhatsApp */
 .chat-box {
     flex: 1;
     overflow-y: auto;
@@ -79,15 +79,15 @@ body {
     display: flex;
     flex-direction: column;
     position: relative;
-    background-color: #e5ddd5;
-    /* Fondo de iconos sutiles */
-    background-image: linear-gradient(rgba(229, 221, 213, 0.88), rgba(229, 221, 213, 0.88)), 
-                      url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
-    background-size: 400px;
-    background-repeat: repeat;
+    background-color: #e5ddd5 !important; /* Forza el color beige */
+    background-image: url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png") !important;
+    background-repeat: repeat !important;
+    background-size: 350px !important;
+    /* Esto mezcla la imagen con el color para que se vea sutil */
+    background-blend-mode: overlay; 
 }
 
-/* MENSAJES */
+/* BURBUJAS */
 .message {
     margin-bottom: 12px;
     padding: 10px 15px;
@@ -95,20 +95,14 @@ body {
     max-width: 85%;
     border-radius: 15px;
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    z-index: 1;
+    z-index: 5;
 }
 
 .user { background: #dcf8c6; align-self: flex-end; border-bottom-right-radius: 2px; }
 .bot { background: #ffffff; align-self: flex-start; border-bottom-left-radius: 2px; }
 
-/* Estilo para imágenes enviadas */
-.message img {
-    max-width: 100%;
-    border-radius: 10px;
-    display: block;
-}
+.message img { max-width: 100%; border-radius: 10px; }
 
-/* INPUT AREA */
 .input-area {
     padding: 10px 15px;
     background: #f0f0f0;
@@ -123,14 +117,9 @@ body {
     border-radius: 25px;
     border: none;
     outline: none;
-    font-size: 15px;
 }
 
-.clip-icon {
-    font-size: 22px;
-    cursor: pointer;
-    color: #757575;
-}
+.clip-icon { font-size: 22px; cursor: pointer; color: #757575; }
 
 .send-btn {
     background: #1e88e5;
@@ -146,11 +135,4 @@ body {
     align-items: center;
 }
 
-@keyframes blink {
-    0% { opacity: 1; }
-    50% { opacity: 0.4; }
-    100% { opacity: 1; }
-}
-
-.chat-box::-webkit-scrollbar { width: 5px; }
-.chat-box::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
