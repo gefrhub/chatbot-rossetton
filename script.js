@@ -5,7 +5,7 @@
 const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbys09jDL6F1pQpySwUO9m5nykao1q3tzTjg3ajJu5X79inxi79VHdNXns0KTWo2U7ot/exec";
 
 const sonidoUsuario = new Audio("https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3");
-const sonidoBot = new Audio("https://assets.mixkit.co/active_storage/sfx/1117/1117-preview.mp3");
+const sonidoBot = new Audio("https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3");
 sonidoUsuario.volume = 0.3;
 sonidoBot.volume = 0.3;
 
@@ -191,3 +191,4 @@ document.addEventListener("DOMContentLoaded", () => {
     const input = document.getElementById("user-input");
     if(input) input.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMessage(); });
 });
+
