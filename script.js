@@ -1,11 +1,8 @@
 // ======================================================
-// CONFIGURACIÓN INTELIGENTE MEJORADA
+// CONFIGURACIÓN CEREBRO AVANZADO
 // ======================================================
 
 const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbys09jDL6F1pQpySwUO9m5nykao1q3tzTjg3ajJu5X79inxi79VHdNXns0KTWo2U7ot/exec";
-
-const localidadesCercanas = ["santo tomé", "santa fe", "sauce viejo", "rincón", "colastiné", "recreo", "esperanza", "paraná"];
-const lugaresDestino = ["casa", "trabajo", "oficina", "ministerio", "hospital", "clínica", "sanatorio", "local", "edificio", "centro", "puerto", "dirección", "dire"];
 
 var botEstado = {
     paso: "saludo", 
@@ -16,141 +13,103 @@ var botEstado = {
 };
 
 // ======================================================
-// MOTOR DE INTELIGENCIA (EXTRACCIÓN AVANZADA)
+// MOTOR DE EXTRACCIÓN DINÁMICA
 // ======================================================
 
-function extraerInformacion(texto) {
-    // 1. Detectar Intención de Ida y Vuelta (Retorno)
-    const palabrasLlevar = /llevar|mandar|envia|enviro|alcanzar/i;
-    const palabrasTraer = /traer|traigan|busquen|busc|buscá|retirar|traer/i;
+function analizarFrase(texto) {
+    // 1. Detectar Intención Completa
+    const tieneLlevar = /llevar|mandar|envia|enviro|alcanzar|dejar/i.test(texto);
+    const tieneTraer = /traer|traigan|busquen|busc|retirar/i.test(texto);
     
-    if (palabrasLlevar.test(texto) && palabrasTraer.test(texto)) {
+    if (tieneLlevar && tieneTraer) {
         botEstado.esIdaVuelta = true;
-        botEstado.tipo = "envio"; // Lo manejamos como envío pero con aviso de retorno
-    } else if (palabrasTraer.test(texto)) {
+        botEstado.tipo = "envio"; 
+    } else if (tieneTraer) {
         botEstado.tipo = "retiro";
-    } else if (palabrasLlevar.test(texto)) {
+    } else if (tieneLlevar) {
         botEstado.tipo = "envio";
     }
 
-    // 2. Detectar Destino con conectores (A, HACIA, HASTA)
-    // Ejemplo: "hacia Santa Fe" o "a la casa de mi vieja"
-    const regexDestino = /(?:hacia|hasta| a |destino|para|llevalo a) (.+)/i;
-    const matchDestino = texto.match(regexDestino);
-    if (matchDestino) {
-        botEstado.datos.destino = matchDestino[1].trim();
-    }
+    // 2. Extraer Origen (Desde donde sale)
+    // Busca después de: desde, de, buscalo en, retiro en, sale de
+    const regOrigen = /(?:desde|buscalo en|retiralo en|sale de|en el|en la) ([\w\s]+?)(?=\s+(?:hasta|hacia|a la|al |para|y me)|$)/i;
+    const matchOri = texto.match(regOrigen);
+    if (matchOri && !botEstado.datos.origen) botEstado.datos.origen = matchOri[1].trim();
 
-    // 3. Detectar Origen con conectores (DESDE, DE, BUSCAR EN)
-    const regexOrigen = /(?:desde| de |origen|buscalo en|retiralo en) (.+)/i;
-    const matchOrigen = texto.match(regexOrigen);
-    if (matchOrigen) {
-        botEstado.datos.origen = matchOrigen[1].trim();
-    }
-
-    // 4. Si solo puso una localidad y no tenemos nada, intentamos ubicarla
-    localidadesCercanas.forEach(loc => {
-        if (texto.includes(loc)) {
-            if (!botEstado.datos.destino && (texto.includes(" a ") || texto.includes("hasta"))) {
-                botEstado.datos.destino = texto;
-            } else if (!botEstado.datos.origen) {
-                botEstado.datos.origen = texto;
-            }
-        }
-    });
+    // 3. Extraer Destino (Hacia donde va)
+    // Busca después de: hasta, hacia, a la, al, traelo a, traeme a
+    const regDestino = /(?:hasta|hacia|traelo a|traeme a|entrega en|a la|al |destino) ([\w\s]+?)(?=\s+(?:y|con|desde)|$)/i;
+    const matchDes = texto.match(regDestino);
+    if (matchDes && !botEstado.datos.destino) botEstado.datos.destino = matchDes[1].trim();
+    
+    // 4. Si dice "mi casa" o "mi trabajo", lo anotamos tal cual
+    if (texto.includes("mi casa")) botEstado.datos.destino = "Mi casa";
+    if (texto.includes("mi trabajo")) botEstado.datos.destino = "Mi trabajo";
 }
 
 // ======================================================
-// LÓGICA CON "CHISPA" MEJORADA
+// LÓGICA DE CONVERSACIÓN HUMANA
 // ======================================================
 
 function responderBot(mensaje) {
     const texto = mensaje.toLowerCase().trim();
-    const linkWA = `<a href="https://wa.me/5493426396085" target="_blank" style="color: #1e88e5; font-weight: bold;">WhatsApp de Guillermo</a>`;
+    const linkWA = `<a href="https://wa.me/5493426396085" target="_blank" style="color: #1e88e5; font-weight: bold; text-decoration: underline;">WhatsApp</a>`;
     
     if (texto.includes("cancelar") || texto.includes("empezar")) {
         botEstado = { paso: "menu", tipo: null, nombreCliente: botEstado.nombreCliente, datos: {origen:"", destino:"", detalles:"", nombre:""}, esIdaVuelta: false };
-        return `¡Reiniciamos! ¿Qué necesitas ahora, ${botEstado.nombreCliente}?`;
+        return "¡Listo! Empezamos de cero. ¿Qué necesitás?";
     }
 
     if (botEstado.paso === "saludo") {
         botEstado.paso = "preguntar_nombre";
-        return "Hola 👋 Soy el asistente virtual de <b>Logística Rossetton</b>. ¿Con quién hablo?";
+        return "Hola 👋 Soy el asistente de <b>Logística Rossetton</b>. ¿Con quién hablo?";
     }
 
     if (botEstado.paso === "preguntar_nombre") {
-        botEstado.nombreCliente = mensaje.replace(/hola|soy|me llamo|mi nombre es/gi, "").trim();
+        botEstado.nombreCliente = mensaje.replace(/hola|soy|me llamo/gi, "").trim();
         botEstado.paso = "menu";
-        return `¡Gusto en conocerte, ${botEstado.nombreCliente}! ¿Querés hacer un <b>Envío</b>, un <b>Retiro</b> o una <b>Consulta</b>? Podés escribirme directamente lo que necesitás.`;
+        return `¡Gusto, ${botEstado.nombreCliente}! ¿Qué servicio necesitás? (Podés contarme todo el pedido de una).`;
     }
 
-    if (botEstado.paso === "menu" || botEstado.paso === "consulta_abierta") {
-        extraerInformacion(texto);
+    // ANALIZAMOS EL MENSAJE EN CUALQUIER MOMENTO
+    analizarFrase(texto);
 
-        if (botEstado.tipo) {
-            let respuesta = botEstado.esIdaVuelta ? "<b>¡Entendido! Es un servicio con retorno (ida y vuelta).</b> " : "<b>¡Perfecto! Ya capté la idea.</b> ";
-            
-            // Validar si falta calle/altura cuando solo dan localidad
-            const soloLocalidad = localidadesCercanas.some(loc => texto === loc);
-            if (soloLocalidad) {
-                respuesta += "Veo la localidad, ¿pero me podrías decir la <b>calle y altura</b> exacta?";
-                return respuesta;
-            }
-
-            if (!botEstado.datos.origen) {
-                botEstado.paso = "origen";
-                return respuesta + "¿De qué dirección y localidad saldría el pedido?";
-            }
-            if (!botEstado.datos.destino) {
-                botEstado.paso = "destino";
-                return respuesta + "¿Y a qué dirección y localidad lo llevamos?";
-            }
-            
-            botEstado.paso = "detalles";
-            return respuesta + "Ya tengo las direcciones. ¿Algún detalle extra o teléfonos? (Piso, dpto, quién paga, etc.)";
-        }
-
-        if (/precio|cuanto|costo|valor/i.test(texto)) return "Los costos dependen de la distancia. Pasame las direcciones y te digo.";
-        
-        botEstado.paso = "consulta_abierta";
-        return "No estoy seguro, pero Guillermo te ayuda enseguida. ¿Querés completar los datos del envío o hablar con él? " + linkWA;
-    }
-
-    // --- RECOLECCIÓN RESTANTE ---
+    // DETERMINAR QUÉ PREGUNTAR SEGÚN LO QUE FALTA
     if (botEstado.tipo) {
-        if (botEstado.paso === "origen") {
-            botEstado.datos.origen = mensaje;
+        if (!botEstado.datos.origen) {
+            botEstado.paso = "origen";
+            return "Entendido. ¿De qué <b>dirección o lugar</b> saldría el pedido?";
+        }
+        if (!botEstado.datos.destino) {
             botEstado.paso = "destino";
-            return "¡Excelente! ¿Y el <b>destino</b> (dirección y localidad)?";
+            return `Perfecto, ya sé que sale de ${botEstado.datos.origen}. ¿A qué <b>dirección o lugar</b> lo llevamos?`;
         }
-        
-        if (botEstado.paso === "destino") {
-            botEstado.datos.destino = mensaje;
-            botEstado.paso = botEstado.tipo === "retiro" ? "nombre_quien" : "detalles";
-            return botEstado.paso === "nombre_quien" ? "¿A nombre de quién retiramos?" : "¿Detalles finales o teléfonos?";
+        if (botEstado.tipo === "retiro" && !botEstado.datos.nombre) {
+            botEstado.paso = "nombre_quien";
+            return "¿A <b>nombre de quién</b> retiramos?";
         }
-
-        if (botEstado.paso === "nombre_quien") {
-            botEstado.datos.nombre = mensaje;
-            botEstado.paso = "detalles";
-            return "Perfecto. ¿Alguna instrucción extra o teléfonos?";
-        }
-
-        if (botEstado.paso === "detalles") {
-            botEstado.datos.detalles = mensaje + (botEstado.esIdaVuelta ? " (PEDIDO CON RETORNO)" : "");
-            enviarNotificacion(botEstado.datos);
-            const resumen = generarResumen(botEstado.datos, botEstado.tipo);
-            botEstado.paso = "menu";
-            botEstado.tipo = null;
-            return `¡Listo! Guillermo ya recibió todo.<br><br>${resumen}<br><br><b>Te escribiremos al toque.</b> ¡Gracias! ❤️`;
+        if (botEstado.paso !== "detalles_finales") {
+            botEstado.paso = "detalles_finales";
+            let resumenPrevio = `<b>Resumen:</b> ${botEstado.tipo.toUpperCase()} desde ${botEstado.datos.origen} hasta ${botEstado.datos.destino}.`;
+            return `${resumenPrevio}<br><br>¿Algún <b>detalle extra</b>? (Teléfonos, si hay que cobrar, piso/depto, etc.)`;
         }
     }
 
-    return "No te entendí bien, perdón ❤️ ¿Necesitás un Envío o Retiro? (Escribí 'cancelar' para reempezar)";
+    if (botEstado.paso === "detalles_finales") {
+        botEstado.datos.detalles = mensaje + (botEstado.esIdaVuelta ? " [IDA Y VUELTA]" : "");
+        enviarNotificacion(botEstado.datos);
+        const res = generarResumen(botEstado.datos, botEstado.tipo);
+        botEstado.paso = "menu"; botEstado.tipo = null;
+        return `¡Excelente! Ya le pasé todo a Guillermo.<br><br>${res}<br><br>Te contactamos en breve. ¡Gracias! ❤️`;
+    }
+
+    if (/precio|cuanto|costo/i.test(texto)) return "Los precios dependen del viaje. Si me das las direcciones, te cotizamos.";
+
+    return "No estoy seguro de entender 🤔. ¿Es un <b>Envío</b> o un <b>Retiro</b>? (O escribí 'cancelar')";
 }
 
 // ======================================================
-// FUNCIONES DE INTERFAZ Y ENVÍO (MANTENER IGUAL)
+// ENVÍO Y MOTOR (MANTENER SIEMPRE)
 // ======================================================
 
 function enviarNotificacion(datosFinales) {
@@ -158,21 +117,21 @@ function enviarNotificacion(datosFinales) {
     const formData = new URLSearchParams();
     formData.append("nombre", botEstado.nombreCliente);
     formData.append("tipo", botEstado.tipo + (botEstado.esIdaVuelta ? " + RETORNO" : ""));
-    formData.append("origen", datosFinales.origen || "");
-    formData.append("destino", datosFinales.destino || "");
-    formData.append("detalles", datosFinales.detalles || "");
+    formData.append("origen", datosFinales.origen);
+    formData.append("destino", datosFinales.destino);
+    formData.append("detalles", datosFinales.detalles);
     fetch(URL_GOOGLE_SHEETS, { method: 'POST', mode: 'no-cors', body: formData.toString() });
 }
 
 function generarResumen(datos, tipo) {
-    let titulo = botEstado.esIdaVuelta ? "ENVÍO CON RETORNO" : (tipo === "envio" ? "ENVÍO" : "RETIRO");
-    return `📦 <b>${titulo}</b><br>🟦 ORIGEN: ${datos.origen}<br>🟩 DESTINO: ${datos.destino}<br>📝 DETALLES: ${datos.detalles}`;
+    let t = botEstado.esIdaVuelta ? "IDA Y VUELTA" : tipo.toUpperCase();
+    return `📦 <b>${t}</b><br>🟦 DE: ${datos.origen}<br>🟩 A: ${datos.destino}<br>📝 INFO: ${datos.detalles}`;
 }
 
 function sendMessage() {
     const input = document.getElementById("user-input");
     const text = input.value.trim();
-    if (text === "") return;
+    if (!text) return;
     addMessage(text, "user");
     input.value = "";
     setTimeout(() => { addMessage(responderBot(text), "bot"); }, 500);
@@ -180,7 +139,6 @@ function sendMessage() {
 
 function addMessage(text, sender) {
     const chatBox = document.getElementById("chat-box");
-    if (!chatBox) return;
     const msg = document.createElement("div");
     msg.className = "message " + sender;
     msg.innerHTML = text.replace(/\n/g, '<br>');
