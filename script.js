@@ -2,49 +2,37 @@ const GEMINI_API_KEY = "AIzaSyCX8-AZznolXp-Ftv8PrSNALBgyFUHEmAc";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbys09jDL6F1pQpySwUO9m5nykao1q3tzTjg3ajJu5X79inxi79VHdNXns0KTWo2U7ot/exec";
 
-// ACÁ GUARDAMOS LA MEMORIA DE LA CHARLA
-let historialChat = [
-    {
-        role: "user",
-        parts: [{ text: "Eres el asistente de Logística Rossetton. Tu jefe es Guillermo. Debes ser amable, usar modismos argentinos y coordinar envíos o retiros. No eres un bot tonto, eres una IA avanzada. Si te saludan, saluda. Si te piden un envío, pide direccion y localidad de origen y destino de forma natural, si te piden un retiro igual, pide informacion de la localidad y direccion donde hay que retirar Y si te dicen que solo quieren hacer una consuta o averiguar algo preguntales que es con respeto siempre." }]
-    },
-    {
-        role: "model",
-        parts: [{ text: "¡Entendido! Soy el asistente de Logística Rossetton y estoy listo para ayudar a los clientes de Guillermo con onda y eficiencia." }]
-    }
-];
+// Instrucciones reforzadas
+const PROMPT_SISTEMA = `Sos el Asistente de Logística Rossetton. Tu jefe es Guillermo. 
+REGLAS ESTRICTAS:
+1. Siempre saludá amablemente y presentate como el asistente de Logística Rossetton.
+2. Usá modismos argentinos (che, dale, perfecto, impecable).
+3. Si el cliente quiere ENVÍO o RETIRO: Pedí dirección EXACTA y LOCALIDAD de origen y destino.
+4. Si solo quieren consultar, respondé con respeto y asesoralos.
+5. No seas robótico, conversá como si estuvieras en el mostrador del local.`;
 
 async function hablarConIA(mensajeUsuario) {
-    // Agregamos lo que dijo el usuario a la memoria
-    historialChat.push({
-        role: "user",
-        parts: [{ text: mensajeUsuario }]
-    });
-
     try {
         const response = await fetch(GEMINI_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: historialChat })
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{ text: `${PROMPT_SISTEMA}\n\nMensaje del cliente: ${mensajeUsuario}` }]
+                }]
+            })
         });
 
         const data = await response.json();
         
         if (data.candidates && data.candidates[0].content) {
-            const respuestaTexto = data.candidates[0].content.parts[0].text;
-            
-            // Guardamos lo que respondió la IA en la memoria para que no se olvide
-            historialChat.push({
-                role: "model",
-                parts: [{ text: respuestaTexto }]
-            });
-
-            return respuestaTexto;
+            return data.candidates[0].content.parts[0].text;
         } else {
-            return "Che, me perdí un toque. ¿Me repetís? Soy un bot y estoy aprendiendo, disculpame.";
+            // Si la IA falla, Tonton responde por su cuenta con lógica básica
+            return "¡Hola! ¿Cómo estás? Soy el asistente de Logística Rossetton. Disculpame, se me cortó la señal un segundo. ¿Qué necesitás enviar o retirar así te tomo los datos?";
         }
     } catch (error) {
-        return "¡Hola! Estoy atendiendo bastantes pedidos de entregas pero decime, ¿qué necesitás mandar o retirar?";
+        return "¡Buenas! Soy el asistente de Guillermo. Decime qué necesitás mandar y a dónde, así te ayudo.";
     }
 }
 
@@ -56,10 +44,11 @@ async function sendMessage() {
     addMessage(text, "user");
     input.value = "";
 
+    // Respuesta de la IA
     const respuestaIA = await hablarConIA(text);
     addMessage(respuestaIA, "bot");
     
-    // Notificamos a la planilla de Guillermo
+    // Notificamos a la planilla
     enviarDatosHoja(text);
 }
 
@@ -82,4 +71,9 @@ function enviarDatosHoja(mensaje) {
 document.addEventListener("DOMContentLoaded", () => {
     const input = document.getElementById("user-input");
     input.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMessage(); });
+    
+    // ESTO FUERZA EL SALUDO INICIAL
+    setTimeout(() => {
+        addMessage("¡Hola! 👋 Soy el asistente virtual de <b>Logística Rossetton</b>. ¿Qué envío o retiro tenemos para hoy?", "bot");
+    }, 500);
 });
