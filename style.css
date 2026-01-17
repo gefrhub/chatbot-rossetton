@@ -1,126 +1,427 @@
-body {
-    background: #cfd8dc;
-    font-family: 'Segoe UI', Arial, sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    margin: 0;
+// ======================================================
+// CONFIGURACIÓN GEMINI + LOGÍSTICA ROSSETTON - BOT IA
+// ======================================================
+
+// API GEMINI
+const GEMINI_API_KEY = "AIzaSyD-Wy2D969Vy2f6RY5aNb2NgNZrU1sMn44";
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+
+const PROMPT_SISTEMA = `
+Sos el asistente virtual de Logística Rossetton, un servicio de envíos y retiros en Argentina.
+Tu personalidad:
+- Hablás como un pibe de Argentina, buena onda, respetuoso, claro y profesional.
+- Sos súper inteligente, pero si algo no te queda claro, NO digas "no entiendo":
+  - En vez de eso, hacé preguntas específicas y útiles para aclarar.
+- Siempre mantené el foco en entender si la persona quiere:
+  1) Enviar algo
+  2) Retirar algo
+  3) Hacer una consulta
+
+Objetivo principal:
+- Detectar si el cliente quiere ENVÍO, RETIRO o solo CONSULTA.
+- Si es ENVÍO o RETIRO, tu misión es conseguir la mayor cantidad de datos posible:
+  - Dirección y localidad de ORIGEN
+  - Dirección y localidad de DESTINO
+  - Teléfono de quien entrega y/o recibe
+  - Tipo de lugar: casa, departamento, oficina, clínica, etc.
+  - Si es RETIRO: siempre preguntar DESDE DÓNDE (dirección y localidad) y A NOMBRE DE QUIÉN se retira.
+  - Preguntar si es solo ida o ida y vuelta.
+
+Estilo de respuesta:
+- Siempre respondé en un solo mensaje, corto y claro.
+- Podés usar emojis con criterio (por ejemplo 🛵, 📦, ✅, 😉).
+- Nunca digas que sos una IA, solo sos el asistente de Logística Rossetton.
+`;
+
+// ======================================================
+// CONFIGURACIÓN GOOGLE SHEETS + SONIDOS
+// ======================================================
+
+const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbys09jDL6F1pQpySwUO9m5nykao1q3tzTjg3ajJu5X79inxi79VHdNXns0KTWo2U7ot/exec";
+
+const sonidoUsuario = new Audio("https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3");
+const sonidoBot = new Audio("https://assets.mixkit.co/active_storage/sfx/1117/1117-preview.mp3");
+sonidoUsuario.volume = 0.3;
+sonidoBot.volume = 0.3;
+
+// ======================================================
+// ESTADO DEL BOT
+// ======================================================
+
+var botEstado = {
+    paso: "saludo",
+    tipo: null, // "envio" | "retiro" | null
+    nombreCliente: "",
+    datos: {
+        origen: "",
+        destino: "",
+        detalles: "",
+        nombre: "",
+        telOrigen: "",
+        telDestino: "",
+        tipoOrigen: "",
+        tipoDestino: ""
+    },
+    esIdaVuelta: false
+};
+
+// ======================================================
+// MOTOR DE INTELIGENCIA LOCAL (EXTRACCIÓN DE DATOS)
+// ======================================================
+
+function esDireccionIncompleta(dir) {
+    if (!dir) return true;
+    const palabras = dir.split(" ");
+    const tieneNumero = /\d/.test(dir);
+    return (palabras.length < 3 && !tieneNumero);
 }
 
-.chat-container {
-    width: 100%;
-    max-width: 420px;
-    height: 650px;
-    background: white;
-    border-radius: 20px;
-    box-shadow: 0 15px 50px rgba(0,0,0,0.3);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+function analizarMensaje(texto) {
+    const envioKeywords = /envio|enviar|mandar|llevar|alcanzar|dejar|lleven|manden|lleve/i;
+    const retiroKeywords = /retiro|retirar|traer|busquen|busc|traigan|buscame|traeme/i;
+
+    if (envioKeywords.test(texto) && retiroKeywords.test(texto)) {
+        botEstado.esIdaVuelta = true;
+        botEstado.tipo = "envio";
+    } else if (retiroKeywords.test(texto)) {
+        botEstado.tipo = "retiro";
+    } else if (envioKeywords.test(texto)) {
+        botEstado.tipo = "envio";
+    }
+
+    const limpiarDireccion = (t) => {
+        return t.replace(/mi casa es|mi dire es|mi dirección es|mi direccion es|mi dire|mi direccion|mi casa/gi, "").trim();
+    };
+
+    const regHasta = /(?:hasta|hacia|a la|al|destino|para|llevalo a|entregalo en) ([\w\sÁÉÍÓÚáéíóúñ0-9]+)/i;
+    const regDesde = /(?:desde|de|origen|salida|en|buscalo en|retiralo en) ([\w\sÁÉÍÓÚáéíóúñ0-9]+)/i;
+
+    const matchHasta = texto.match(regHasta);
+    const matchDesde = texto.match(regDesde);
+
+    if (matchHasta) {
+        let limpio = limpiarDireccion(matchHasta[1]);
+        if (!esDireccionIncompleta(limpio)) botEstado.datos.destino = limpio;
+    }
+    if (matchDesde) {
+        let limpio = limpiarDireccion(matchDesde[1]);
+        if (!esDireccionIncompleta(limpio)) botEstado.datos.origen = limpio;
+    }
+
+    const telRegex = /(\+?\d[\d\s\-]{6,})/g;
+    const telefonos = texto.match(telRegex);
+    if (telefonos && telefonos.length > 0) {
+        if (!botEstado.datos.telOrigen) botEstado.datos.telOrigen = telefonos[0].trim();
+        if (telefonos[1] && !botEstado.datos.telDestino) botEstado.datos.telDestino = telefonos[1].trim();
+    }
+
+    const tipoLugarRegex = /(casa|departamento|dpto|oficina|clinica|clínica|local)/i;
+    const tipoMatch = texto.match(tipoLugarRegex);
+    if (tipoMatch) {
+        if (!botEstado.datos.tipoOrigen) botEstado.datos.tipoOrigen = tipoMatch[1];
+        else if (!botEstado.datos.tipoDestino) botEstado.datos.tipoDestino = tipoMatch[1];
+    }
 }
 
-.chat-header {
-    background: #1e88e5;
-    color: white;
-    padding: 12px 18px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
+// ======================================================
+// LLAMADO A GEMINI
+// ======================================================
+
+async function hablarConIA(textoParaIA) {
+    try {
+        const response = await fetch(GEMINI_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{ text: PROMPT_SISTEMA + "\n\n" + textoParaIA }]
+                }]
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            console.error("ERROR GEMINI:", data.error);
+            return "Che, hubo un problema técnico con el servidor. Probemos de nuevo en un ratito, ¿te parece?";
+        }
+
+        if (data.candidates && data.candidates[0].content) {
+            return data.candidates[0].content.parts[0].text;
+        }
+
+        return "No me quedó del todo claro, ¿me contás un poquito mejor qué necesitás? 🛵";
+    } catch (e) {
+        console.error("ERROR CONEXIÓN GEMINI:", e);
+        return "Parece que hay un problema de conexión. Revisemos internet y probemos de nuevo en un toque.";
+    }
 }
 
-.profile-pic {
-    width: 50px;
-    height: 50px;
-    background: white;
-    border-radius: 50%;
-    overflow: hidden;
-    border: 2px solid white;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-shrink: 0;
+// ======================================================
+// LÓGICA DE CONVERSACIÓN + IA
+// ======================================================
+
+async function responderBotIA(mensaje) {
+    const texto = mensaje.toLowerCase().trim();
+
+    analizarMensaje(texto);
+    const tieneDatosAhora = (botEstado.datos.origen !== "" || botEstado.datos.destino !== "");
+
+    const esSoloDespedida = /^(gracias|listo|eso es todo|nada mas|nada más|chau|hasta pronto|no necesito nada mas|ya esta|ya está)$/i.test(texto);
+    if (esSoloDespedida && !tieneDatosAhora && botEstado.paso !== "saludo") {
+        const instruccion = `
+El cliente se está despidiendo y no agregó datos nuevos.
+Respondé agradeciendo con mucha buena onda, diciendo que cualquier cosa puede volver a escribir.
+No pidas más datos, solo despedite bien.
+`;
+        const contexto = construirContextoParaIA(mensaje, instruccion);
+        return await hablarConIA(contexto);
+    }
+
+    const elogios = /genio|capo|crack|buenisimo|buenísimo|me encanta|que bueno|qué bueno|excelente|buen bot|amable|te pasaste/i;
+    if (elogios.test(texto) && botEstado.paso !== "saludo") {
+        const instruccion = `
+El cliente te elogió.
+Agradecé con calidez, decí que estás para ayudar con envíos y retiros, y preguntá si necesita algo más.
+`;
+        const contexto = construirContextoParaIA(mensaje, instruccion);
+        return await hablarConIA(contexto);
+    }
+
+    if (texto.includes("cancelar") || texto.includes("empezar de nuevo") || texto.includes("empezar")) {
+        botEstado = {
+            paso: "menu",
+            tipo: null,
+            nombreCliente: botEstado.nombreCliente,
+            datos: {
+                origen: "",
+                destino: "",
+                detalles: "",
+                nombre: "",
+                telOrigen: "",
+                telDestino: "",
+                tipoOrigen: "",
+                tipoDestino: ""
+            },
+            esIdaVuelta: false
+        };
+        const instruccion = `
+El cliente pidió reiniciar o cancelar.
+Respondé que reiniciamos todo y preguntá de nuevo qué necesita: envío, retiro o consulta.
+`;
+        const contexto = construirContextoParaIA(mensaje, instruccion);
+        return await hablarConIA(contexto);
+    }
+
+    if (botEstado.paso === "saludo") {
+        botEstado.paso = "preguntar_nombre";
+        const instruccion = `
+Es el primer contacto.
+Presentate como el asistente de Logística Rossetton, con buena onda, y pedile el nombre al cliente.
+`;
+        const contexto = construirContextoParaIA(mensaje, instruccion);
+        return await hablarConIA(contexto);
+    }
+
+    if (botEstado.paso === "preguntar_nombre") {
+        botEstado.nombreCliente = mensaje.replace(/hola|soy|me llamo|mi nombre es/gi, "").trim() || "cliente";
+        botEstado.paso = "menu";
+        const instruccion = `
+El cliente te dijo su nombre: "${botEstado.nombreCliente}".
+Saludalo por su nombre y preguntale si quiere coordinar un Envío, un Retiro o hacer una consulta.
+Decile que puede contarte todo el pedido directamente.
+`;
+        const contexto = construirContextoParaIA(mensaje, instruccion);
+        return await hablarConIA(contexto);
+    }
+
+    if (!botEstado.tipo) {
+        const instruccion = `
+Todavía no está claro si el cliente quiere ENVÍO, RETIRO o solo CONSULTA.
+Según este mensaje del cliente, tratá de inferirlo.
+Si no queda claro, preguntale de forma amable si quiere enviar algo, retirar algo o solo consultar.
+`;
+        const contexto = construirContextoParaIA(mensaje, instruccion);
+        return await hablarConIA(contexto);
+    }
+
+    if (!botEstado.datos.origen || esDireccionIncompleta(botEstado.datos.origen)) {
+        botEstado.paso = "origen";
+        const instruccion = `
+Necesitás pedir la dirección de ORIGEN.
+Pedile al cliente calle, altura y localidad de donde sale el pedido.
+Si podés, también sugerí que te pase el teléfono de contacto y si es casa, dpto, oficina o clínica.
+`;
+        const contexto = construirContextoParaIA(mensaje, instruccion);
+        return await hablarConIA(contexto);
+    }
+
+    if (!botEstado.datos.destino || esDireccionIncompleta(botEstado.datos.destino)) {
+        botEstado.paso = "destino";
+        const instruccion = `
+Necesitás pedir la dirección de DESTINO.
+Pedile al cliente calle, altura y localidad de destino.
+Si podés, también pedile teléfono de quien recibe y si es casa, dpto, oficina o clínica.
+`;
+        const contexto = construirContextoParaIA(mensaje, instruccion);
+        return await hablarConIA(contexto);
+    }
+
+    if (botEstado.tipo === "retiro" && !botEstado.datos.nombre) {
+        botEstado.paso = "nombre_quien";
+        const instruccion = `
+Es un RETIRO y todavía no sabés a nombre de quién se retira.
+Pedile al cliente el nombre de la persona a quien hay que retirar el paquete.
+`;
+        const contexto = construirContextoParaIA(mensaje, instruccion);
+        return await hablarConIA(contexto);
+    }
+
+    if (botEstado.paso !== "finalizar") {
+        botEstado.paso = "finalizar";
+        let tipoTxt = botEstado.esIdaVuelta ? "IDA Y VUELTA" : (botEstado.tipo ? botEstado.tipo.toUpperCase() : "ENVÍO");
+        const resumen = generarResumen(botEstado.datos, botEstado.tipo);
+        const instruccion = `
+Ya tenés casi todos los datos.
+Mostrale al cliente un resumen del pedido con este contenido:
+${resumen}
+
+Preguntale si quiere agregar algún detalle extra (teléfonos, quién paga, horarios, si es ida y vuelta, etc.).
+`;
+        const contexto = construirContextoParaIA(mensaje, instruccion);
+        return await hablarConIA(contexto);
+    }
+
+    if (botEstado.paso === "finalizar") {
+        let detallesLimpios = mensaje.replace(/nada mas|nada más|eso es todo|listo|gracias/gi, "").trim();
+        botEstado.datos.detalles = (detallesLimpios === "" ? "Sin detalles" : detallesLimpios) + (botEstado.esIdaVuelta ? " [CON RETORNO]" : "");
+
+        enviarNotificacion(botEstado.datos);
+        const resumen = generarResumen(botEstado.datos, botEstado.tipo);
+
+        const instruccion = `
+Ya registraste el pedido y lo enviaste a las planillas de Google Sheets.
+Mostrale al cliente este resumen:
+${resumen}
+
+Agradecé con buena onda, decile que en breve lo van a contactar y que cualquier cosa puede volver a escribir.
+`;
+        const contexto = construirContextoParaIA(mensaje, instruccion);
+
+        botEstado.paso = "menu";
+        botEstado.tipo = null;
+        botEstado.datos = {
+            origen: "",
+            destino: "",
+            detalles: "",
+            nombre: "",
+            telOrigen: "",
+            telDestino: "",
+            tipoOrigen: "",
+            tipoDestino: ""
+        };
+        botEstado.esIdaVuelta = false;
+
+        return await hablarConIA(contexto);
+    }
+
+    const instruccion = `
+No quedó claro el contexto exacto.
+Preguntale de forma amable si necesita un Envío, un Retiro o una consulta, y tratá de guiarlo para que te dé direcciones, localidad y teléfonos.
+`;
+    const contexto = construirContextoParaIA(mensaje, instruccion);
+    return await hablarConIA(contexto);
 }
 
-.profile-pic img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain; /* Cambiado a contain para que el logo se vea entero */
-    display: block !important;
+function construirContextoParaIA(mensajeCliente, instruccion) {
+    return `
+Estado actual del pedido:
+- Paso: ${botEstado.paso}
+- Tipo: ${botEstado.tipo || "sin definir"}
+- Nombre cliente: ${botEstado.nombreCliente || "sin nombre"}
+- Origen: ${botEstado.datos.origen || "sin origen"}
+- Destino: ${botEstado.datos.destino || "sin destino"}
+- Tel Origen: ${botEstado.datos.telOrigen || "sin tel origen"}
+- Tel Destino: ${botEstado.datos.telDestino || "sin tel destino"}
+- Tipo Origen: ${botEstado.datos.tipoOrigen || "sin tipo origen"}
+- Tipo Destino: ${botEstado.datos.tipoDestino || "sin tipo destino"}
+- Ida y vuelta: ${botEstado.esIdaVuelta ? "sí" : "no"}
+
+Mensaje del cliente:
+"${mensajeCliente}"
+
+Tu tarea ahora:
+${instruccion}
+`;
 }
 
-.header-info { display: flex; flex-direction: column; }
-.header-title { font-size: 17px; font-weight: bold; }
+// ======================================================
+// INTERFAZ Y FUNCIONES AUXILIARES
+// ======================================================
 
-.status-online {
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+async function sendMessage() {
+    const input = document.getElementById("user-input");
+    const text = input.value.trim();
+    if (!text) return;
+
+    sonidoUsuario.play().catch(() => {});
+    addMessage(text, "user");
+    input.value = "";
+
+    const respuesta = await responderBotIA(text);
+    sonidoBot.play().catch(() => {});
+    addMessage(respuesta, "bot");
 }
 
-.status-online::before {
-    content: "";
-    width: 10px;
-    height: 10px;
-    background: #00e676;
-    border-radius: 50%;
-    box-shadow: 0 0 10px #00e676;
-    animation: blink 1.5s infinite;
+function addMessage(text, sender) {
+    const chatBox = document.getElementById("chat-box");
+    const msg = document.createElement("div");
+    msg.className = "message " + sender;
+    msg.innerHTML = text.replace(/\n/g, "<br>");
+    chatBox.appendChild(msg);
+    chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-/* FONDO CON DIBUJOS BIEN MARCADOS */
-.chat-box {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    /* Color de fondo beige sólido */
-    background-color: #e5ddd5;
-    /* Imagen de fondo sin filtros de claridad para que se vea fuerte */
-    background-image: url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
-    background-repeat: repeat;
-    background-size: 300px;
+function enviarNotificacion(datosFinales) {
+    if (!URL_GOOGLE_SHEETS || URL_GOOGLE_SHEETS.includes("TU_URL")) return;
+    const formData = new URLSearchParams();
+    formData.append("nombre", botEstado.nombreCliente);
+    formData.append("tipo", (botEstado.tipo || "Envio") + (botEstado.esIdaVuelta ? " + RETORNO" : ""));
+    formData.append("origen", datosFinales.origen);
+    formData.append("destino", datosFinales.destino);
+    formData.append("detalles", datosFinales.detalles);
+    fetch(URL_GOOGLE_SHEETS, { method: "POST", mode: "no-cors", body: formData.toString() });
 }
 
-.message {
-    margin-bottom: 12px;
-    padding: 10px 15px;
-    max-width: 85%;
-    border-radius: 15px;
-    font-size: 15px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    z-index: 10;
+function generarResumen(datos, tipo) {
+    let t = botEstado.esIdaVuelta ? "IDA Y VUELTA" : (tipo ? tipo.toUpperCase() : "ENVÍO");
+    return `📦 ${t}
+🟦 DE: ${datos.origen}
+🟩 A: ${datos.destino}
+📞 Tel Origen: ${datos.telOrigen || "no informado"}
+📞 Tel Destino: ${datos.telDestino || "no informado"}
+🏠 Origen: ${datos.tipoOrigen || "no informado"}
+🏢 Destino: ${datos.tipoDestino || "no informado"}
+📝 INFO: ${datos.detalles || "Sin detalles"}`;
 }
 
-.user { background: #dcf8c6; align-self: flex-end; border-bottom-right-radius: 2px; }
-.bot { background: white; align-self: flex-start; border-bottom-left-radius: 2px; }
-
-.input-area {
-    padding: 12px;
-    background: #f0f0f0;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+// Evitar error por el input file del HTML
+function subirFoto(input) {
+    if (input && input.files && input.files[0]) {
+        addMessage("Recibí la imagen, la voy a tener en cuenta para el pedido 📷.", "bot");
+    }
 }
 
-#user-input {
-    flex: 1;
-    padding: 12px 18px;
-    border-radius: 25px;
-    border: none;
-    outline: none;
-}
+document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(async () => {
+        const saludo = await responderBotIA("hola");
+        addMessage(saludo, "bot");
+    }, 800);
 
-.send-btn {
-    background: #1e88e5;
-    color: white;
-    border: none;
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    cursor: pointer;
-}
-
-@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    const input = document.getElementById("user-input");
+    if (input) {
+        input.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") sendMessage();
+        });
+    }
+});
