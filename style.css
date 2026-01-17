@@ -1,10 +1,10 @@
 /* ======================================================
-    DISEÑO PREMIUM LOGÍSTICA ROSSETTON
+    DISEÑO PREMIUM LOGÍSTICA ROSSETTON - FINAL
    ====================================================== */
 
 body {
     background: #cfd8dc;
-    font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -29,7 +29,7 @@ body {
 .chat-header {
     background: #1e88e5;
     color: white;
-    padding: 15px 20px;
+    padding: 12px 18px;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -38,43 +38,49 @@ body {
 }
 
 .profile-pic {
-    width: 45px;
-    height: 45px;
+    width: 42px;
+    height: 42px;
     background: white;
     border-radius: 50%;
     overflow: hidden;
-    border: 2px solid rgba(255,255,255,0.8);
+    border: 2px solid rgba(255,255,255,0.9);
     display: flex;
     justify-content: center;
     align-items: center;
+    flex-shrink: 0;
 }
 
-.profile-pic img { width: 90%; height: auto; }
+/* Ajuste para que tu logo ocupe bien el espacio circular */
+.profile-pic img { 
+    width: 100%; 
+    height: 100%; 
+    object-fit: cover; 
+}
 
 .header-info { display: flex; flex-direction: column; }
-.header-title { font-size: 17px; font-weight: bold; margin: 0; }
+.header-title { font-size: 16px; font-weight: bold; margin: 0; }
 
-/* PUNTO VERDE TITILANDO REFORZADO */
+/* PUNTO VERDE TITILANDO MEJORADO */
 .status-online {
-    font-size: 12px;
+    font-size: 11px;
     display: flex;
     align-items: center;
-    gap: 6px;
-    color: #e3f2fd;
+    gap: 5px;
+    color: #b3e5fc;
 }
 
 .status-online::before {
     content: "";
-    width: 10px;
-    height: 10px;
-    background: #00e676; /* Verde Neón */
+    width: 8px;
+    height: 8px;
+    background: #00e676;
     border-radius: 50%;
     display: inline-block;
-    box-shadow: 0 0 10px #00e676;
-    animation: pulse-green 1.5s infinite;
+    box-shadow: 0 0 8px #00e676;
+    animation: pulse-green 2s infinite;
 }
 
-/* --- FONDO LOGÍSTICA ESTILO WHATSAPP --- */
+/* --- FONDO LOGÍSTICA SUTIL (MÁS CLARO) --- */
 .chat-box {
     flex: 1;
     overflow-y: auto;
@@ -82,25 +88,27 @@ body {
     display: flex;
     flex-direction: column;
     position: relative;
-    background-color: #e5ddd5; /* Color WA */
     
-    /* El fondo ahora es un pseudo-elemento para que no tape nada */
-    background-image: url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
+    /* Color de fondo más claro para que no canse la vista */
+    background-color: #f0f2f5; 
+    
+    /* Fondo estilo WhatsApp pero con opacidad reducida */
+    background-image: linear-gradient(rgba(240, 242, 245, 0.92), rgba(240, 242, 245, 0.92)), 
+                      url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
     background-size: 400px;
     background-repeat: repeat;
-    background-attachment: local;
 }
 
-/* BURBUJAS */
+/* BURBUJAS ESTILO PREMIUM */
 .message {
     margin-bottom: 12px;
-    padding: 10px 15px;
-    font-size: 15px;
+    padding: 10px 14px;
+    font-size: 14.5px;
     line-height: 1.4;
-    max-width: 85%;
+    max-width: 82%;
     position: relative;
-    border-radius: 12px;
-    box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     z-index: 1;
 }
 
@@ -118,50 +126,53 @@ body {
 
 /* --- INPUT AREA --- */
 .input-area {
-    padding: 10px 15px;
-    background: #f0f0f0;
+    padding: 12px 15px;
+    background: #f0f2f5;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 
 .input-area input[type="text"] {
     flex: 1;
-    padding: 12px 15px;
+    padding: 10px 18px;
     border-radius: 25px;
-    border: none;
+    border: 1px solid #e1e4e8;
     outline: none;
     font-size: 15px;
+    background: white;
 }
 
 .clip-icon {
-    font-size: 22px;
+    font-size: 20px;
     cursor: pointer;
-    color: #757575;
-    transition: 0.3s;
+    color: #54656f;
+    transition: 0.2s;
 }
-.clip-icon:hover { color: #1e88e5; }
+.clip-icon:hover { color: #1e88e5; transform: scale(1.1); }
 
 .send-btn {
     background: #1e88e5;
     color: white;
     border: none;
-    width: 45px;
-    height: 45px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
     cursor: pointer;
-    font-size: 20px;
     display: flex;
     justify-content: center;
     align-items: center;
+    transition: 0.3s;
 }
+
+.send-btn:hover { background: #1565c0; transform: scale(1.05); }
 
 /* ANIMACIÓN PULSO */
 @keyframes pulse-green {
-    0% { transform: scale(0.9); opacity: 1; }
-    50% { transform: scale(1.2); opacity: 0.7; box-shadow: 0 0 15px #00e676; }
-    100% { transform: scale(0.9); opacity: 1; }
+    0% { transform: scale(0.9); opacity: 1; box-shadow: 0 0 5px #00e676; }
+    50% { transform: scale(1.1); opacity: 0.8; box-shadow: 0 0 12px #00e676; }
+    100% { transform: scale(0.9); opacity: 1; box-shadow: 0 0 5px #00e676; }
 }
 
 .chat-box::-webkit-scrollbar { width: 5px; }
-.chat-box::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); }
+.chat-box::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
