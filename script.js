@@ -2,14 +2,8 @@ const GEMINI_API_KEY = "AIzaSyCX8-AZznolXp-Ftv8PrSNALBgyFUHEmAc";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbys09jDL6F1pQpySwUO9m5nykao1q3tzTjg3ajJu5X79inxi79VHdNXns0KTWo2U7ot/exec";
 
-// Instrucciones reforzadas
-const PROMPT_SISTEMA = `Sos el Asistente de Logística Rossetton. Tu jefe es Guillermo. 
-REGLAS ESTRICTAS:
-1. Siempre saludá amablemente y presentate como el asistente de Logística Rossetton.
-2. Usá modismos argentinos (che, dale, perfecto, impecable).
-3. Si el cliente quiere ENVÍO o RETIRO: Pedí dirección EXACTA y LOCALIDAD de origen y destino.
-4. Si solo quieren consultar, respondé con respeto y asesoralos.
-5. No seas robótico, conversá como si estuvieras en el mostrador del local.`;
+// Instrucciones ultra detalladas para que no sea "tonto"
+const PROMPT_SISTEMA = "Sos el asistente humano de Logística Rossetton. Hablás como un argentino (usá che, dale, joya). Tu objetivo es sacar estos datos: 1. Nombre del cliente, 2. Dirección y Localidad de origen, 3. Dirección y Localidad de destino. Si el cliente dice que quiere mandar algo, decile '¡Dale, impecable! Pasame la calle y la localidad de donde sale y a dónde va así te cotizo'. No repitas siempre lo mismo, mantené una charla real.";
 
 async function hablarConIA(mensajeUsuario) {
     try {
@@ -18,21 +12,25 @@ async function hablarConIA(mensajeUsuario) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [{
-                    parts: [{ text: `${PROMPT_SISTEMA}\n\nMensaje del cliente: ${mensajeUsuario}` }]
+                    role: "user", // Esto es CLAVE para que Google no rechace el mensaje
+                    parts: [{ text: PROMPT_SISTEMA + "\n\nCliente dice: " + mensajeUsuario }]
                 }]
             })
         });
 
         const data = await response.json();
         
+        // Si Google nos da una respuesta válida
         if (data.candidates && data.candidates[0].content) {
             return data.candidates[0].content.parts[0].text;
-        } else {
-            // Si la IA falla, Tonton responde por su cuenta con lógica básica
-            return "¡Hola! ¿Cómo estás? Soy el asistente de Logística Rossetton. Disculpame, se me cortó la señal un segundo. ¿Qué necesitás enviar o retirar así te tomo los datos?";
-        }
+        } 
+        
+        // Si hay un error de Google (como que se bloqueó el mensaje)
+        console.log("Error de la IA:", data);
+        return "¡Dale! Soy el asistente de Rossetton. Justo se me cortó el wifi un toque, pero decime: ¿Desde qué calle y localidad saldría el envío y a dónde lo llevamos?";
+
     } catch (error) {
-        return "¡Buenas! Soy el asistente de Guillermo. Decime qué necesitás mandar y a dónde, así te ayudo.";
+        return "¡Buenas! Soy el asistente de Guillermo. Decime qué necesitás mandar y a dónde (calle y localidad), así te ayudo rápido.";
     }
 }
 
@@ -44,11 +42,11 @@ async function sendMessage() {
     addMessage(text, "user");
     input.value = "";
 
-    // Respuesta de la IA
+    // Llamamos a la IA
     const respuestaIA = await hablarConIA(text);
     addMessage(respuestaIA, "bot");
     
-    // Notificamos a la planilla
+    // Guardamos en tu planilla
     enviarDatosHoja(text);
 }
 
@@ -72,8 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const input = document.getElementById("user-input");
     input.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMessage(); });
     
-    // ESTO FUERZA EL SALUDO INICIAL
     setTimeout(() => {
-        addMessage("¡Hola! 👋 Soy el asistente virtual de <b>Logística Rossetton</b>. ¿Qué envío o retiro tenemos para hoy?", "bot");
+        addMessage("¡Hola! 👋 Soy el asistente de <b>Logística Rossetton</b>. ¿Qué envío o retiro tenemos para hoy?", "bot");
     }, 500);
 });
