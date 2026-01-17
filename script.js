@@ -1,35 +1,40 @@
-const GEMINI_API_KEY = "AIzaSyCX8-AZznolXp-Ftv8PrSNALBgyFUHEmAc";
-// Cambiamos a gemini-pro que es el modelo más compatible con v1beta
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+// ======================================================
+// CONFIGURACIÓN CON LLAVE NUEVA - LOGÍSTICA ROSSETTON
+// ======================================================
+
+const GEMINI_API_KEY = "AIzaSyD-Wy2D969Vy2f6RY5aNb2NgNZrU1sMn44";
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+// Instrucciones para que sea un asistente de primera
+const PROMPT_SISTEMA = "Sos el asistente de Logística Rossetton. Tu jefe es Guillermo. Reglas: 1. Hablá como argentino (che, dale, impecable). 2. Si quieren mandar algo, pedí calle, altura y localidad de origen y destino. 3. Usá emojis de motitos 🛵. 4. Si ya dijeron una ciudad (ej. Santa Fe), pedí solo la calle de esa ciudad.";
 
 async function hablarConIA(mensajeUsuario) {
-    const prompt = "Sos el asistente de Logística Rossetton. Hablá como argentino, sé amable y pedí dirección y localidad de origen y destino para envíos.";
-    
     try {
         const response = await fetch(GEMINI_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [{
-                    parts: [{ text: prompt + "\nCliente: " + mensajeUsuario }]
+                    parts: [{ text: PROMPT_SISTEMA + "\n\nCliente: " + mensajeUsuario }]
                 }]
             })
         });
 
         const data = await response.json();
 
-        if (data.error) {
-            // Si gemini-pro también falla, probamos con la última opción automática
-            return "DICE GOOGLE: " + data.error.message;
-        }
-
+        // Si hay respuesta de la IA
         if (data.candidates && data.candidates[0].content) {
             return data.candidates[0].content.parts[0].text;
+        } 
+        
+        // Si hay algún error, lo mostramos para saber qué pasa
+        if (data.error) {
+            return "ERROR DE GOOGLE: " + data.error.message;
         }
 
-        return "Che, se me mezclaron los pedidos. ¿Me repetís? 🛵";
+        return "Che, no te entendí bien. ¿Me repetís? 🛵";
     } catch (e) {
-        return "Error de conexión. 🛵";
+        return "ERROR DE CONEXIÓN: Fijate si tenés internet.";
     }
 }
 
@@ -49,7 +54,7 @@ function addMessage(text, sender) {
     const chatBox = document.getElementById("chat-box");
     const msg = document.createElement("div");
     msg.className = "message " + sender;
-    msg.innerText = text; // Usamos innerText para evitar líos de formato
+    msg.innerHTML = text.replace(/\n/g, '<br>');
     chatBox.appendChild(msg);
     chatBox.scrollTop = chatBox.scrollHeight;
 }
@@ -57,4 +62,9 @@ function addMessage(text, sender) {
 document.addEventListener("DOMContentLoaded", () => {
     const input = document.getElementById("user-input");
     input.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMessage(); });
+    
+    // Saludo inicial automático
+    setTimeout(() => {
+        addMessage("¡Hola! 👋 Soy el asistente de <b>Logística Rossetton</b>. ¿Qué envío o retiro tenemos para hoy? 🛵", "bot");
+    }, 500);
 });
