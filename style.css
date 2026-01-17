@@ -1,132 +1,181 @@
+/* ======================================================
+   DISEÑO PREMIUM LOGÍSTICA ROSSETTON
+   ====================================================== */
 
 body {
-    background: linear-gradient(135deg, #e3f2fd, #f2f2f2);
-    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #cfd8dc, #e1f5fe);
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     display: flex;
     justify-content: center;
-    padding-top: 40px;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
 }
 
 .chat-container {
     width: 95%;
     max-width: 420px;
-    background: white;
-    border-radius: 18px;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    height: 600px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
-    animation: fadeIn 0.4s ease;
+    position: relative;
+    border: 1px solid rgba(255,255,255,0.8);
 }
 
+/* --- HEADER PROFESIONAL --- */
 .chat-header {
-    background: #1e88e5;
+    background: #1e88e5; /* Azul Rossetton */
     color: white;
-    padding: 18px;
-    text-align: center;
-    font-size: 18px;
-    font-weight: bold;
-    letter-spacing: 0.5px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 10;
 }
 
+.header-info {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.header-title {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    margin: 0;
+}
+
+/* Punto verde titilando (Online) */
+.status-online {
+    font-size: 12px;
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    opacity: 0.9;
+}
+
+.status-online::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    background: #4caf50;
+    border-radius: 50%;
+    display: inline-block;
+    animation: blink 1.5s infinite;
+}
+
+/* --- CUERPO DEL CHAT (FONDO WHATSAPP LOGÍSTICA) --- */
 .chat-box {
-    height: 420px;
+    flex: 1;
     overflow-y: auto;
-    padding: 15px;
-    background: #fafafa;
-    display: flex; /* Añadido para mejor control de burbujas */
+    padding: 20px;
+    position: relative;
+    /* Fondo con patrón de iconos (Logística) */
+    background-color: #e5ddd5;
+    background-image: url("https://www.transparenttextures.com/patterns/cubes.png"); /* Patrón sutil */
+    display: flex;
     flex-direction: column;
 }
 
+/* Burbujas Estilo Moderno */
 .message {
-    margin-bottom: 14px;
-    padding: 12px 14px;
-    border-radius: 14px;
-    max-width: 80%;
-    line-height: 1.4;
-    animation: pop 0.25s ease;
-    word-wrap: break-word; /* Para que textos largos no se salgan */
-}
-
-/* --- ESTILO PARA LOS EJEMPLOS (WEB STYLE) --- */
-small {
-    display: block;
-    font-size: 0.82em;
-    opacity: 0.7;
-    font-weight: 300;
-    margin-top: 8px;
-    line-height: 1.3;
-    border-top: 1px solid rgba(0,0,0,0.05);
-    padding-top: 5px;
+    margin-bottom: 12px;
+    padding: 10px 15px;
+    font-size: 15px;
+    line-height: 1.45;
+    position: relative;
+    max-width: 85%;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
 .user {
-    background: #c8f7c5;
+    background: #dcf8c6; /* Verde WhatsApp */
+    color: #303030;
     align-self: flex-end;
-    margin-left: auto;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    border-bottom-right-radius: 2px; /* Efecto punta de burbuja */
+    border-radius: 18px 18px 0 18px;
+    border: 1px solid #c1e6a4;
 }
 
 .bot {
-    background: #e6e6e6;
-    align-self: flex-start; /* Asegura que esté a la izquierda */
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-    border-bottom-left-radius: 2px; /* Efecto punta de burbuja */
+    background: #ffffff; /* Blanco Puro */
+    color: #303030;
+    align-self: flex-start;
+    border-radius: 18px 18px 18px 0;
+    border: 1px solid #ececec;
 }
 
+/* Negritas y Enlaces */
+b { color: #1565c0; }
+a { color: #1e88e5; text-decoration: none; font-weight: bold; }
+
+/* --- ÁREA DE ENTRADA (ESTILO IOS/MODERNO) --- */
 .input-area {
+    padding: 15px;
+    background: #f0f0f0;
     display: flex;
-    padding: 12px;
-    background: #fff;
-    border-top: 1px solid #ddd;
+    align-items: center;
+    gap: 10px;
 }
 
 input {
     flex: 1;
-    padding: 12px;
-    border-radius: 10px;
-    border: 1px solid #ccc;
+    padding: 12px 18px;
+    border-radius: 25px;
+    border: 1px solid #fff;
     font-size: 15px;
-    transition: 0.2s;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+    outline: none;
+    transition: all 0.3s;
 }
 
 input:focus {
+    background: #ffffff;
     border-color: #1e88e5;
-    box-shadow: 0 0 5px rgba(30,136,229,0.3);
-    outline: none;
 }
 
 button {
-    margin-left: 10px;
-    padding: 12px 18px;
     background: #1e88e5;
     color: white;
     border: none;
-    border-radius: 10px;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     cursor: pointer;
-    font-weight: bold;
-    transition: 0.2s;
+    transition: transform 0.2s, background 0.2s;
+    box-shadow: 0 3px 10px rgba(30,136,229,0.3);
 }
 
 button:hover {
     background: #1565c0;
+    transform: scale(1.05);
 }
 
-/* Animaciones suaves */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+/* Animación del punto online */
+@keyframes blink {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+    100% { opacity: 1; transform: scale(1); }
 }
 
-@keyframes pop {
-    from { transform: scale(0.95); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-}
+/* Scrollbar fina y elegante */
+.chat-box::-webkit-scrollbar { width: 4px; }
+.chat-box::-webkit-scrollbar-thumb { background: #b0bec5; border-radius: 10px; }
 
-/* Personalización de la barra de desplazamiento */
-.chat-box::-webkit-scrollbar {
-    width: 6px;
-}
-.chat-box::-webkit-scrollbar-thumb {
-    background: #ccc;
-    border-radius: 10px;
+/* Efecto para textos pequeños (ejemplos) */
+small {
+    font-size: 12px;
+    color: #78909c;
+    display: block;
+    margin-top: 5px;
+    font-style: italic;
 }
