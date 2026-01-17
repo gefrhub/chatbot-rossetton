@@ -1,5 +1,5 @@
 // LLAVE NUEVA QUE ME PASASTE
-const GEMINI_API_KEY = "AIzaSyD-Wy2D969Vy2f6RY5aNb2NgNZrU1sMn44";
+// La API key viene desde config.js
 // USAMOS ESTA URL QUE ES LA QUE GOOGLE EXIGE AHORA
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
 
@@ -59,3 +59,4 @@ document.addEventListener("DOMContentLoaded", () => {
     const input = document.getElementById("user-input");
     input.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMessage(); });
 });
+
