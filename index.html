@@ -29,8 +29,16 @@
     </div>
 </div>
 
+<!-- ⭐ BLOQUE NECESARIO PARA LEER LA API KEY DESDE VERCEL ⭐ -->
+<script>
+  window.__env = {
+    GEMINI_API_KEY: "{{GEMINI_API_KEY}}"
+  };
+</script>
+
+<!-- Tus scripts -->
 <script src="config.js"></script>
 <script src="script.js"></script>
+
 </body>
 </html>
-
