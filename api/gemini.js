@@ -1,45 +1,37 @@
-export const config = {
-  api: {
-    bodyParser: true,
-  },
-};
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  if (!process.env.GEMINI_API_KEY) {
+    return res.status(500).json({ error: "Falta la variable GEMINI_API_KEY en Vercel" });
+  }
+
   try {
     const { message } = req.body;
 
     if (!message) {
-      return res.status(400).json({ error: "Falta el mensaje del usuario." });
+      return res.status(400).json({ error: "No se proporcionó un mensaje" });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    if (!apiKey) {
-      return res.status(500).json({ error: "API Key no encontrada en el servidor." });
-    }
+    const result = await model.generateContent(message);
+    const response = await result.response;
+    const text = response.text();
 
-    const respuesta = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=" + apiKey,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: message }] }]
-        })
-      }
-    );
-
-    const data = await respuesta.json();
-
-    if (!data.candidates || !data.candidates[0]) {
-      return res.status(500).json({ error: "Respuesta inválida del modelo." });
-    }
-
-    const texto = data.candidates[0].content.parts[0].text;
-
-    res.status(200).json({ reply: texto });
+    return res.status(200).json({ reply: text });
 
   } catch (error) {
-    res.status(500).json({ error: "Error interno del servidor." });
+    console.error("DETALLE DEL ERROR:", error);
+
+    return res.status(500).json({
+      error: "Error interno del servidor",
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 }
